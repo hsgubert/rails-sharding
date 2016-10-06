@@ -40,6 +40,7 @@ module Rails::Sharding
       self.configurations[shard_group.to_s].keys
     end
 
+    # Method that should be called on a rails initializer
     def self.setup
       if block_given?
         yield Config
@@ -48,6 +49,11 @@ module Rails::Sharding
       if Config.establish_all_connections_on_setup
         # Establishes connections with all shards specified in config/shards.yml
         ConnectionHandler.establish_all_connections
+      end
+
+      if Config.establish_all_connections_on_setup
+        # includes the #using_shard method to all AR scopes
+        ActiveRecordExtensions.extend_active_record_scope
       end
     end
 

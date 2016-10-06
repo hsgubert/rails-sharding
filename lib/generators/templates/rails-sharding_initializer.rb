@@ -1,4 +1,4 @@
 
-Shards::Core.setup do |config|
+Rails::Sharding.setup do |config|
 
 end
