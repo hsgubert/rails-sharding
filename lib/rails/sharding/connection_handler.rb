@@ -17,9 +17,20 @@ module Rails::Sharding
     def self.establish_connection(shard_group, shard_name, environment=nil)
       self.setup unless defined? @@connection_handler
 
-      configurations = (environment.nil? ? Core.configurations : Core.configurations(environment))
-      resolver = ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.new(configurations[shard_group.to_s])
-      connection_spec = resolver.spec(shard_name.to_sym)
+      unless configurations = (environment.nil? ? Core.configurations : Core.configurations(environment))
+        raise Errors::ConfigNotFoundError, "Cannot find configuration for environment '#{environment}' in #{Config.shards_config_file}"
+      end
+
+      unless shard_group_configurations = configurations[shard_group.to_s]
+        raise Errors::ConfigNotFoundError, "Cannot find configuration for shard_group '#{shard_group}' in environment '#{environment}' in #{Config.shards_config_file}"
+      end
+
+      resolver = ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.new(shard_group_configurations)
+      begin
+        connection_spec = resolver.spec(shard_name.to_sym)
+      rescue ActiveRecord::AdapterNotSpecified => e
+        raise Errors::ConfigNotFoundError, "Cannot find configuration for shard '#{shard_group}:#{shard_name}' in environment '#{environment}' in #{Config.shards_config_file}"
+      end
 
       # since rails requires a class to be the connection owner, we trick rails passing
       # an instance of the ConnectionPoolOwner class, that responds to the #name method

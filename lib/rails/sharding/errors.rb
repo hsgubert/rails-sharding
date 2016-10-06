@@ -7,5 +7,7 @@ module Rails::Sharding
 
     class ConnectionPoolRetrievalError < StandardError; end
 
+    class ConfigNotFoundError < StandardError; end
+
   end
 end

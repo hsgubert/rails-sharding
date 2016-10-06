@@ -40,9 +40,7 @@ shards_namespace = namespace :shards do
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
       # configures path for migrations of this shard group and creates dir if necessary
-      shard_group_migrations_path = 'db/shards_migrations/' + shard_group.to_s
-      Rails.application.paths.add shard_group_migrations_path
-      shard_group_migrations_dir = Rails.application.paths[shard_group_migrations_path].to_a
+      shard_group_migrations_dir = File.join(Rails::Sharding::Config.shards_migrations_dir, shard_group.to_s)
       ActiveRecord::Tasks::DatabaseTasks.migrations_paths = shard_group_migrations_dir
       FileUtils.mkdir_p(shard_group_migrations_dir)
 
@@ -84,9 +82,7 @@ shards_namespace = namespace :shards do
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
         # configures path for schemas of this shard group and creates dir if necessary
-        shard_group_schemas_path = 'db/shards_schemas/' + shard_group.to_s
-        Rails.application.paths.add shard_group_schemas_path
-        shard_group_schemas_dir = Rails.application.paths[shard_group_schemas_path].to_a.first
+        shard_group_schemas_dir = File.join(Rails::Sharding::Config.shards_schemas_dir, shard_group.to_s)
         FileUtils.mkdir_p(shard_group_schemas_dir)
 
         shards_configurations.each do |shard, configuration|

@@ -26,6 +26,12 @@ module Rails::Sharding
     def self.configurations(environment=Rails.env)
       @@db_configs ||= YAML.load_file(Config.shards_config_file)
       @@db_configs[environment]
+    rescue Errno::ENOENT => e
+      raise Errors::ConfigNotFoundError, Config.shards_config_file.to_s + ' file was not found'
+    end
+
+    def self.reset_configurations_cache
+      @@db_configs = nil
     end
 
     def self.test_configurations
@@ -51,7 +57,7 @@ module Rails::Sharding
         ConnectionHandler.establish_all_connections
       end
 
-      if Config.establish_all_connections_on_setup
+      if Config.extend_active_record_scope
         # includes the #using_shard method to all AR scopes
         ActiveRecordExtensions.extend_active_record_scope
       end

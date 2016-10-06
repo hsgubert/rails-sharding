@@ -6,4 +6,7 @@
 /doc/
 /pkg/
 /spec/reports/
+/spec/fixtures/shards.yml
+/spec/fixtures/schemas
 /tmp/
+.byebug_history

@@ -8,6 +8,9 @@ module Rails::Sharding
     # will only have effect when loading/saving models that include the
     # Rails::Sharding::Shardable module
     def self.extend_active_record_scope
+      # avoinds duplicate extension
+      return if ActiveRecord::Base.respond_to? :using_shard
+
       # Includes #using_shard in ActiveRecord::Base models (both classes and instances)
       ActiveRecord::Base.extend ScopeMethods
       ActiveRecord::Base.include ScopeMethods
