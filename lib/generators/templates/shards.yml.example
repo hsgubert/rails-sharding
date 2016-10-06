@@ -1,0 +1,35 @@
+default: &default
+  adapter: mysql2
+  encoding: utf8
+  reconnect: false
+  pool: 5
+  username: ___
+  password: ___
+  socket: /var/run/mysqld/mysqld.sock
+
+development:
+  shard_group1:
+    shard1:
+      <<: *default
+      database: group1_shard1_development
+    shard2:
+      <<: *default
+      database: group1_shard2_development
+
+test:
+  shard_group1:
+    shard1:
+      <<: *default
+      database: group1_shard1_test
+    shard2:
+      <<: *default
+      database: group1_shard2_test
+
+production:
+  shard_group1:
+    shard1:
+      <<: *default
+      database: group1_shard1
+    shard2:
+      <<: *default
+      database: group1_shard2
