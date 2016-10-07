@@ -3,6 +3,7 @@
 [![Build Status](https://travis-ci.org/hsgubert/rails-sharding.svg?branch=master)](https://travis-ci.org/hsgubert/rails-sharding)
 [![Code Climate](https://codeclimate.com/github/hsgubert/rails-sharding/badges/gpa.svg)](https://codeclimate.com/github/hsgubert/rails-sharding)
 [![Test Coverage](https://codeclimate.com/github/hsgubert/rails-sharding/badges/coverage.svg)](https://codeclimate.com/github/hsgubert/rails-sharding/coverage)
+[![Gem Version](https://badge.fury.io/rb/rails-sharding.svg)](https://badge.fury.io/rb/rails-sharding)
 
 Simple and robust sharding for Rails, including Migrations and ActiveRecord extensions
 
