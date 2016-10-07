@@ -1,5 +1,9 @@
 # Rails::Sharding
 
+[![Build Status](https://travis-ci.org/hsgubert/rails-sharding.svg?branch=master)](https://travis-ci.org/hsgubert/rails-sharding)
+[![Code Climate](https://codeclimate.com/github/hsgubert/rails-sharding/badges/gpa.svg)](https://codeclimate.com/github/hsgubert/rails-sharding)
+
+
 Simple and robust sharding for Rails, including Migrations and ActiveRecord extensions
 
 This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. It also provides rake tasks and migrations to help you manage the schema by shard groups.
