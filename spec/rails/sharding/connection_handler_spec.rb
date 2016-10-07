@@ -32,7 +32,7 @@ describe Rails::Sharding::ConnectionHandler do
         expect(connection_owner.name).to be == 'shard_group1:shard1'
 
         expect(connection_spec).to be_a ActiveRecord::ConnectionAdapters::ConnectionSpecification
-        expect(connection_spec.config).to include(:adapter=>"mysql2", :encoding=>"utf8", :reconnect=>false, :pool=>5, :socket=>"/var/run/mysqld/mysqld.sock", :database=>"group1_shard1_development")
+        expect(connection_spec.config).to include(:database=>"group1_shard1_development")
       end
 
       described_class.establish_connection(:shard_group1, :shard1)

@@ -1,11 +1,14 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 
-# requires rails, as the gem depends on it
+# requires rails, as the gem depends on it, and sets the RAIL_ENV to development
+# (it is not the rails app we are testing, so it is better to test the gem when
+# the rails app is not in test env)
 require 'rails/all'
+ENV['RAILS_ENV'] = 'development'
+Rails.env = 'development'
 
 require 'rails/sharding'
 require 'byebug'
-
 # Changes location of the config file to a fixture
 test_shards_config_path = 'spec/fixtures/shards.yml'
 Rails::Sharding::Config::DEFAULT_CONFIGS[:shards_config_file] = test_shards_config_path
