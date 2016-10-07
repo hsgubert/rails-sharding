@@ -81,15 +81,11 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-        # configures path for schemas of this shard group and creates dir if necessary
-        shard_group_schemas_dir = File.join(Rails::Sharding::Config.shards_schemas_dir, shard_group.to_s)
-        FileUtils.mkdir_p(shard_group_schemas_dir)
-
         shards_configurations.each do |shard, configuration|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
           puts "== Dumping schema of #{shard_group}:#{shard}"
 
-          schema_filename = File.join(shard_group_schemas_dir, shard + "_schema.rb")
+          schema_filename = shard_schema_path(shard_group, shard)
           File.open(schema_filename, "w:utf-8") do |file|
             Rails::Sharding.using_shard(shard_group, shard) do
               ActiveRecord::SchemaDumper.dump(Rails::Sharding::ConnectionHandler.retrieve_connection(shard_group, shard), file)
@@ -108,16 +104,13 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-        # configures path for schemas of this shard group
-        shard_group_schemas_path = 'db/shards_schemas/' + shard_group.to_s
-        Rails.application.paths.add shard_group_schemas_path
-        shard_group_schemas_dir = Rails.application.paths[shard_group_schemas_path].to_a.first
+        setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
           puts "== Loading schema of #{shard_group}:#{shard}"
 
-          schema_filename = File.join(shard_group_schemas_dir, shard + "_schema.rb")
+          schema_filename = shard_schema_path(shard_group, shard)
           ActiveRecord::Tasks::DatabaseTasks.check_schema_file(schema_filename)
           Rails::Sharding.using_shard(shard_group, shard) do
             load(schema_filename)
@@ -154,10 +147,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-        # configures path for migrations of this shard group
-        shard_group_migrations_path = 'db/shards_migrations/' + shard_group.to_s
-        Rails.application.paths.add shard_group_migrations_path
-        ActiveRecord::Tasks::DatabaseTasks.migrations_paths = Rails.application.paths[shard_group_migrations_path].to_a
+        setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
@@ -179,10 +169,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-        # configures path for migrations of this shard group
-        shard_group_migrations_path = 'db/shards_migrations/' + shard_group.to_s
-        Rails.application.paths.add shard_group_migrations_path
-        ActiveRecord::Tasks::DatabaseTasks.migrations_paths = Rails.application.paths[shard_group_migrations_path].to_a
+        setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
@@ -203,10 +190,7 @@ shards_namespace = namespace :shards do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-      # configures path for migrations of this shard group
-      shard_group_migrations_path = 'db/shards_migrations/' + shard_group.to_s
-      Rails.application.paths.add shard_group_migrations_path
-      ActiveRecord::Tasks::DatabaseTasks.migrations_paths = Rails.application.paths[shard_group_migrations_path].to_a
+      setup_migrations_path(shard_group)
 
       shards_configurations.each do |shard, configuration|
         next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
@@ -242,10 +226,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.test_configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-        # configures path for schemas of this shard group
-        shard_group_schemas_path = 'db/shards_schemas/' + shard_group.to_s
-        Rails.application.paths.add shard_group_schemas_path
-        shard_group_schemas_dir = Rails.application.paths[shard_group_schemas_path].to_a.first
+        setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
@@ -256,7 +237,7 @@ shards_namespace = namespace :shards do
             should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
             Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
-            schema_filename = File.join(shard_group_schemas_dir, shard + "_schema.rb")
+            schema_filename = shard_schema_path(shard_group, shard)
             ActiveRecord::Tasks::DatabaseTasks.check_schema_file(schema_filename)
             Rails::Sharding.using_shard(shard_group, shard) do
               ActiveRecord::Schema.verbose = false
@@ -305,5 +286,22 @@ shards_namespace = namespace :shards do
         end
       end
     end
+  end
+
+  # Configures path for migrations of this shard group and creates dir if necessary
+  # We need this to run migrations (so we can find them)
+  # We need this load schemas (se we can build the schema_migrations table)
+  def setup_migrations_path(shard_group)
+    shard_group_migrations_dir = File.join(Rails::Sharding::Config.shards_migrations_dir, shard_group.to_s)
+    ActiveRecord::Tasks::DatabaseTasks.migrations_paths = [shard_group_migrations_dir]
+    ActiveRecord::Migrator.migrations_paths = [shard_group_migrations_dir]
+    FileUtils.mkdir_p(shard_group_migrations_dir)
+  end
+
+  # configures path for schemas of this shard group and creates dir if necessary
+  def shard_schema_path(shard_group, shard_name)
+    shard_group_schemas_dir = File.join(Rails::Sharding::Config.shards_schemas_dir, shard_group.to_s)
+    FileUtils.mkdir_p(shard_group_schemas_dir)
+    File.join(shard_group_schemas_dir, shard_name + "_schema.rb")
   end
 end
