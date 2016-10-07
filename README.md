@@ -133,7 +133,7 @@ They work just the same as the tasks `rake:db:...` but they operate on all shard
 ```
 rake shards:migrate SHARD_GROUP=shard_group_1
 rake shards:migrate SHARD_GROUP=shard_group_1 SHARD=shard1
-``
+```
 
 
 ## Development and Contributing
