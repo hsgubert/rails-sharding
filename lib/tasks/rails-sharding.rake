@@ -57,9 +57,7 @@ shards_namespace = namespace :shards do
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
       # configures path for migrations of this shard group and creates dir if necessary
-      shard_group_migrations_dir = File.join(Rails::Sharding::Config.shards_migrations_dir, shard_group.to_s)
-      ActiveRecord::Tasks::DatabaseTasks.migrations_paths = shard_group_migrations_dir
-      FileUtils.mkdir_p(shard_group_migrations_dir)
+      setup_migrations_path(shard_group)
 
       shards_configurations.each do |shard, configuration|
         next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
@@ -121,6 +119,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
@@ -164,6 +163,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
@@ -186,6 +186,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
@@ -207,6 +208,7 @@ shards_namespace = namespace :shards do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+      # configures path for migrations of this shard group and creates dir if necessary
       setup_migrations_path(shard_group)
 
       shards_configurations.each do |shard, configuration|
@@ -243,6 +245,7 @@ shards_namespace = namespace :shards do
       Rails::Sharding.test_configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
         shards_configurations.each do |shard, configuration|
@@ -254,6 +257,10 @@ shards_namespace = namespace :shards do
             should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
             Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
+            # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
+            initial_rails_env = Rails.env
+            Rails.env = 'test'
+
             schema_filename = shard_schema_path(shard_group, shard)
             ActiveRecord::Tasks::DatabaseTasks.check_schema_file(schema_filename)
             Rails::Sharding.using_shard(shard_group, shard) do
@@ -261,6 +268,9 @@ shards_namespace = namespace :shards do
               load(schema_filename)
             end
           ensure
+            # restores rails env
+            Rails.env = initial_rails_env
+
             if should_reconnect
               # reestablishes connection for RAILS_ENV environment (whatever that is)
               Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
@@ -321,4 +331,5 @@ shards_namespace = namespace :shards do
     FileUtils.mkdir_p(shard_group_schemas_dir)
     File.join(shard_group_schemas_dir, shard_name + "_schema.rb")
   end
+
 end

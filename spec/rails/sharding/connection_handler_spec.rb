@@ -27,11 +27,9 @@ describe Rails::Sharding::ConnectionHandler do
     end
 
     it 'should establish connection through a ActiveRecord::AbstractAdapters::ConnectionHandler' do
-      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_owner, connection_spec|
-        expect(connection_owner).to be_a Rails::Sharding::ConnectionHandler::ConnectionPoolOwner
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-
+      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
         expect(connection_spec).to be_a ActiveRecord::ConnectionAdapters::ConnectionSpecification
+        expect(connection_spec.name).to be == 'shard_group1:shard1'
         expect(connection_spec.config).to include(:database=>"group1_shard1_development")
       end
 
@@ -41,11 +39,11 @@ describe Rails::Sharding::ConnectionHandler do
 
   describe '.establish_all_connections' do
     it 'should establish connections for all shards for the current environment' do
-      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_owner, connection_spec|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
+      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
+        expect(connection_spec.name).to be == 'shard_group1:shard1'
       end
-      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_owner, connection_spec|
-        expect(connection_owner.name).to be == 'shard_group1:shard2'
+      expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
+        expect(connection_spec.name).to be == 'shard_group1:shard2'
       end
 
       described_class.establish_all_connections
@@ -54,17 +52,16 @@ describe Rails::Sharding::ConnectionHandler do
 
   describe '.connection_pool' do
     it 'should retrieve connection pool from the connection handler' do
-      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).once do |connection_owner|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-      end
-
+      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).
+        with('shard_group1:shard1').
+        and_return(double('connection_pool'))
       described_class.connection_pool(:shard_group1, :shard1)
     end
 
     it 'should raise a ActiveRecord::ConnectionNotEstablished if pool doesnt exist' do
       # pass the call to a real connection handler
-      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).once do |connection_owner|
-        ActiveRecord::ConnectionAdapters::ConnectionHandler.new.retrieve_connection_pool(connection_owner)
+      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).once do |connection_name|
+        ActiveRecord::ConnectionAdapters::ConnectionHandler.new.retrieve_connection_pool(connection_name)
       end
 
       expect do
@@ -75,20 +72,14 @@ describe Rails::Sharding::ConnectionHandler do
 
   describe '.retrieve_connection' do
     it 'should retrieve connection from the connection handler' do
-      expect(@mock_connection_handler).to receive(:retrieve_connection).once do |connection_owner|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-      end
-
+      expect(@mock_connection_handler).to receive(:retrieve_connection).once.with('shard_group1:shard1')
       described_class.retrieve_connection(:shard_group1, :shard1)
     end
   end
 
   describe '.connected?' do
     it 'should check connection through the connection handler' do
-      expect(@mock_connection_handler).to receive(:connected?).once do |connection_owner|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-      end
-
+      expect(@mock_connection_handler).to receive(:connected?).once.with('shard_group1:shard1')
       described_class.connected?(:shard_group1, :shard1)
     end
   end
@@ -96,9 +87,9 @@ describe Rails::Sharding::ConnectionHandler do
   describe '.with_connection' do
     it 'should yield a connection got from the connection handler to a block' do
       mock_connection_pool = double('connection_pool')
-      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).once do |connection_owner|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-      end.and_return(mock_connection_pool)
+      expect(@mock_connection_handler).to receive(:retrieve_connection_pool).
+        with('shard_group1:shard1').
+        and_return(mock_connection_pool)
 
       mock_connection = double('connection')
       expect(mock_connection_pool).to receive(:with_connection).once do |&block|
@@ -113,10 +104,7 @@ describe Rails::Sharding::ConnectionHandler do
 
   describe '.remove_connection' do
     it 'should remove connection through the connection handler' do
-      expect(@mock_connection_handler).to receive(:remove_connection).once do |connection_owner|
-        expect(connection_owner.name).to be == 'shard_group1:shard1'
-      end
-
+      expect(@mock_connection_handler).to receive(:remove_connection).once.with('shard_group1:shard1')
       described_class.remove_connection(:shard_group1, :shard1)
     end
   end
