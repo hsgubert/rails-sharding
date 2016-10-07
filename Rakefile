@@ -17,7 +17,11 @@ namespace :db do
     desc 'Loads gem test environment and rake tasks from gem'
     task :load_env do
       require 'rspec'
+
+      # requires spec helper but ensures no test coverage is reported to codeclimate
+      ENV['CODECLIMATE_REPO_TOKEN'] = nil
       require './spec/spec_helper'
+      
       load 'lib/tasks/rails-sharding.rake'
     end
 

@@ -29,6 +29,27 @@ describe Rails::Sharding::ActiveRecordExtensions do
       expect(Account.using_shard(:shard_group1, :shard1).where(id: new_account.id).first).to be == new_account
       expect(Account.using_shard(:shard_group1, :shard1).where(id: new_account.id + 1).first).to be_nil
     end
+
+    it 'should not accept block' do
+      expect {
+        Account.using_shard(:shard_group1, :shard1) {}
+      }.to raise_exception Rails::Sharding::Errors::WrongUsageError
+    end
+
+    it 'should allow multiple calls, overriding the shard configuration' do
+      new_account = Account.using_shard(:shard_group1, :shard1).create
+      expect(Account.using_shard(:shard_group1, :shard2).using_shard(:shard_group1, :shard1).where(id: new_account.id).first).to be == new_account
+      expect(Account.using_shard(:shard_group1, :shard2).where(id: new_account.id).using_shard(:shard_group1, :shard1).first).to be == new_account
+    end
+
+    it 'should be evaluated when compared' do
+      new_account = Account.using_shard(:shard_group1, :shard1).create
+      another_account = Account.using_shard(:shard_group1, :shard1).create
+      expect(Account.using_shard(:shard_group1, :shard1).where(id: new_account.id) == [new_account]).to be true
+      expect(Account.where('1=1').using_shard(:shard_group1, :shard1) == [new_account, another_account]).to be true
+      expect(Account.using_shard(:shard_group1, :shard1).where(id: new_account.id).eql? [new_account]).to be true
+      expect(Account.where('1=1').using_shard(:shard_group1, :shard1).eql? [new_account, another_account]).to be true
+    end
   end
 
   describe '#using_shard method in relations' do

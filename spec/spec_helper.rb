@@ -1,3 +1,7 @@
+# Adds code climate test reporter. To activate it, set the CODECLIMATE_REPO_TOKEN environment variable
+require "codeclimate-test-reporter"
+CodeClimate::TestReporter.start
+
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 
 # requires rails, as the gem depends on it, and sets the RAIL_ENV to development
