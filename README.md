@@ -1,8 +1,28 @@
 # Rails::Sharding
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/rails/sharding`. To experiment with that code, run `bin/console` for an interactive prompt.
+Simple and robust sharding for Rails, including Migrations and ActiveRecord extensions
 
-TODO: Delete this and the text above, and describe your gem
+This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. It also provides rake tasks and migrations to help you manage the schema by shard groups.
+
+After you have setup your shards, accessing them is as simple as:
+```ruby
+  new_user = User.using_shard(:shard_group1, :shard1).create(username: 'x')
+  loaded_user = User.using_shard(:shard_group1, :shard1).where(username: 'x').first
+```
+
+You can also use the block syntax, where all your queries inside will be directed to the correct shard:
+```ruby
+  Rails::Sharding.using_shard(:shard_group1, :shard1) do
+    new_user = User.create(username: 'x')
+    loaded_user = User.where(username: 'x').first
+    billing_infos = loaded_user.billing_infos.all
+  end
+```
+
+You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
+
+## Compatibility
+As of now this gem has been tested only with Rails 4.2. It does not work yet with Rails 5.
 
 ## Installation
 
@@ -13,29 +33,120 @@ gem 'rails-sharding'
 ```
 
 And then execute:
+```
+bundle
+```
 
-    $ bundle
+## Creating Shards
+This gem helps you create shards that are additional and completely separate from your master database. The master database is the one that is created and managed through rails, and is the default storage for all your models.
 
-Or install it yourself as:
+To start with the rails-sharding gem, run the command
+```
+rails g rails_sharding:scaffold
+```
 
-    $ gem install rails-sharding
+This will generate a `config/shards.yml.example` like this:
+```ruby
+default: &default
+  adapter: mysql2
+  encoding: utf8
+  reconnect: false
+  pool: 5
+  username: ___
+  password: ___
+  socket: /var/run/mysqld/mysqld.sock
 
-## Usage
+development:
+  shard_group1:
+    shard1:
+      <<: *default
+      database: group1_shard1_development
+    shard2:
+      <<: *default
+      database: group1_shard2_development
+...
+```
 
-TODO: Write usage instructions here
+Rename it to `config/shards.yml` and change it to your database configuration. This example file defines a single shard group (named `shard_group1`) containing two shards (`shard1` and `shard2`). A shard group is simply a set of shards that should have the same schema.
 
-## Development
+When you're ready to create the shards run
+```
+rake shards:create
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+## Migrating Shards
+Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema. For example, add the following migration to your `db/shards_migrations/shard_group1`:
+```ruby
+# 20160808000000_create_users.rb
+class CreateClients < ActiveRecord::Migration
+  def up
+    create_table :users do |t|
+      t.string :username, :limit => 100
+      t.timestamps
+    end
+  end
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+  def down
+    drop_table :users
+  end
+end
+```
 
-## Contributing
+Then run:
+```
+rake shards:migrate
+```
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/rails-sharding.
+All the shards will be migrated, and one schema file will be dumped for each of the shards (just like rails would do for your master database). You can see the schema of the shards in `db/shards_schemas/shard_group1/`, and it will be something like:
+```ruby
+ActiveRecord::Schema.define(version: 20160808000000) do
+
+  create_table "users", force: :cascade do |t|
+    t.string   "username",       limit: 100
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
+end
+```
+
+## Other rake tasks
+The rails-sharding gem offers several rake tasks analogous to the ones offered by ActiveRecord:
+```
+rake shards:create                                      
+rake shards:drop                                        
+rake shards:migrate                                     
+rake shards:migrate:down                                
+rake shards:migrate:redo                                
+rake shards:migrate:reset                               
+rake shards:migrate:up                                  
+rake shards:rollback                                    
+rake shards:schema:dump                                 
+rake shards:schema:load                                 
+rake shards:test:load_schema                            
+rake shards:test:prepare                                
+rake shards:test:purge               
+rake shards:version
+```
+
+They work just the same as the tasks `rake:db:...` but they operate on all shards of all shard groups. If you want to run a rake task just to a specific shard group or shard you can use the `SHARD_GROUP` and `SHARD` options:
+```
+rake shards:migrate SHARD_GROUP=shard_group_1
+rake shards:migrate SHARD_GROUP=shard_group_1 SHARD=shard1
+``
+
+
+## Development and Contributing
+
+After checking out the repo, run `bundle` to install gems and run `rake db:test:prepare` to create the test shards. Then, run `rspec` to run the tests.
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/hsgubert/rails-sharding.
 
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
 
+## Acknowledgements
+
+This gem was inspired and based on several other gems like: [octopus](https://github.com/thiagopradi/octopus), [shard_handler](https://github.com/locaweb/shard_handler) and [active_record_shards](https://github.com/zendesk/active_record_shards).
