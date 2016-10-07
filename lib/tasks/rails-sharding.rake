@@ -8,6 +8,23 @@ shards_namespace = namespace :shards do
     ActiveRecord::Base.include(Rails::Sharding::ShardableModel) unless ActiveRecord::Base.ancestors.include? Rails::Sharding::ShardableModel
   end
 
+  # for each of the shards, check that 1) the environment set in the ar_internal_metadata
+  # table matches the current rails env and 2) it is not a protected environment
+  # (defined in ActiveRecord::Base.protected_environments)
+  desc "Checks if the environment is not protected and if the shards match the current environment (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
+  task check_protected_environments: [:_make_activerecord_base_shardable] do
+    Rails::Sharding.configurations.each do |shard_group, shards_configurations|
+      next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
+
+      shards_configurations.each do |shard, configuration|
+        next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
+        Rails::Sharding.using_shard(shard_group, shard) do
+          ActiveRecord::Tasks::DatabaseTasks.check_protected_environments!
+        end
+      end
+    end
+  end
+
   desc "Creates database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
   task create: [:environment] do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
@@ -22,7 +39,7 @@ shards_namespace = namespace :shards do
   end
 
   desc "Drops database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
-  task drop: [:environment] do
+  task drop: [:environment, :check_protected_environments] do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
@@ -100,7 +117,7 @@ shards_namespace = namespace :shards do
     end
 
     desc "Loads schema.rb file into the shards (options: RAILS_ENV=x, SHARD_GROUP=x, SHARD=x)"
-    task load: [:_make_activerecord_base_shardable] do
+    task load: [:_make_activerecord_base_shardable, :check_protected_environments] do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
