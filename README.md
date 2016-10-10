@@ -27,8 +27,10 @@ You can also use the block syntax, where all your queries inside will be directe
 You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
 
 ## Compatibility
-Gem version 0.1.1 -> compatible with Rails 4.2
 Gem version 1.0.0 -> compatible with Rails 5.0
+
+Gem version 0.1.1 -> compatible with Rails 4.2
+
 
 ## Installation
 
