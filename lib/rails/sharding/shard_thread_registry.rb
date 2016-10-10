@@ -1,11 +1,13 @@
-require 'active_support/per_thread_registry'
 
 module Rails::Sharding
   class ShardThreadRegistry
-    # creates two thread-specific variables
-    extend ActiveSupport::PerThreadRegistry
-    attr_accessor :_current_shard_group
-    attr_accessor :_current_shard_name
+    # creates two thread-specific variables to store the current shard of connection
+    thread_mattr_accessor :_current_shard_group
+    thread_mattr_accessor :_current_shard_name
+
+    # auxiliary variable used to check if shard connectio was used inside an
+    # using_shard block (so we can print an alert if not)
+    thread_mattr_accessor :shard_connection_used
 
     def self.connecting_to_master?
       current_shard_group.nil? || current_shard_name.nil?
@@ -18,6 +20,7 @@ module Rails::Sharding
     def self.connect_back_to_master!
       self.current_shard_group = nil
       self.current_shard_name = nil
+      self.shard_connection_used = false
     end
 
     # Returns the current shard group (for the current Thread)
