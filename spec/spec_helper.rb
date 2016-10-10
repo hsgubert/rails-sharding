@@ -1,6 +1,11 @@
 # Adds code climate test reporter. To activate it, set the CODECLIMATE_REPO_TOKEN environment variable
-require "codeclimate-test-reporter"
-CodeClimate::TestReporter.start
+if ENV['CODECLIMATE_REPO_TOKEN']
+  require "codeclimate-test-reporter"
+  CodeClimate::TestReporter.start
+elsif ENV['SIMPLECOV']
+  require 'simplecov'
+  SimpleCov.start
+end
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 

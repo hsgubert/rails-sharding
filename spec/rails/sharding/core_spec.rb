@@ -77,11 +77,31 @@ describe Rails::Sharding::Core do
     end
   end
 
+  describe '.for_each_shard' do
+    it 'should yield configuration of all shards in all shard groups' do
+      yielded_shards = []
+      Rails::Sharding.for_each_shard do |shard_group, shard, configuration|
+        yielded_shards << [shard_group, shard]
+        expect(configuration).to be == Rails::Sharding.configurations[shard_group][shard]
+      end
+
+      Rails::Sharding.configurations.each do |shard_group, shards_configs|
+        shards_configs.keys.each do |shard|
+          expect(yielded_shards).to include [shard_group, shard]
+        end
+      end
+    end
+  end
+
   describe '.using_shard' do
     it 'should yield block with shard set in a thread-specific storage' do
       expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be false
       described_class.using_shard(:shard_group1, :shard1) do
         expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be true
+
+        # avoids warning of unused connection during tests
+        expect(Rails::Sharding::ShardThreadRegistry.shard_connection_used).to be false
+        Rails::Sharding::ShardThreadRegistry.shard_connection_used = true
       end
       expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be false
     end
@@ -89,6 +109,10 @@ describe Rails::Sharding::Core do
     it 'should release shard connection from connection pool upon finishing the block' do
       described_class.using_shard(:shard_group1, :shard1) do
         expect(Rails::Sharding::ConnectionHandler.connection_pool(:shard_group1, :shard1)).to receive(:release_connection).once
+
+        # avoids warning of unused connection during tests
+        expect(Rails::Sharding::ShardThreadRegistry.shard_connection_used).to be false
+        Rails::Sharding::ShardThreadRegistry.shard_connection_used = true
       end
     end
   end

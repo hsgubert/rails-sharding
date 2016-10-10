@@ -64,5 +64,18 @@ describe Rails::Sharding::ShardThreadRegistry do
     end
   end
 
+  describe '.connect_back_to_master!' do
+    it 'should reset all thread-specific variables' do
+      described_class.current_shard_group = :shard_group1
+      described_class.current_shard_name = :shard1
+      described_class.shard_connection_used = true
+
+      described_class.connect_back_to_master!
+
+      expect(described_class.current_shard_group).to be_nil
+      expect(described_class.current_shard_name).to be_nil
+      expect(described_class.current_shard_name).to be_falsey
+    end
+  end
 
 end

@@ -35,6 +35,7 @@ module Rails::Sharding
         if ShardThreadRegistry.connecting_to_master?
           return original_connection_pool
         else
+          ShardThreadRegistry.shard_connection_used = true # records that shard connection was used at least once
           return ConnectionHandler.connection_pool(*ShardThreadRegistry.current_shard_group_and_name)
         end
       end
@@ -44,6 +45,7 @@ module Rails::Sharding
         if ShardThreadRegistry.connecting_to_master?
           return original_retrieve_connection
         else
+          ShardThreadRegistry.shard_connection_used = true # records that shard connection was used at least once
           return ConnectionHandler.retrieve_connection(*ShardThreadRegistry.current_shard_group_and_name)
         end
       end

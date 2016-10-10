@@ -8,29 +8,36 @@ shards_namespace = namespace :shards do
     ActiveRecord::Base.include(Rails::Sharding::ShardableModel) unless ActiveRecord::Base.ancestors.include? Rails::Sharding::ShardableModel
   end
 
-  desc "Creates database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
-  task create: [:environment] do
+  # for each of the shards, check that 1) the environment set in the ar_internal_metadata
+  # table matches the current rails env and 2) it is not a protected environment
+  # (defined in ActiveRecord::Base.protected_environments)
+  desc "Checks if the environment is not protected and if the shards match the current environment (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
+  task check_protected_environments: [:_make_activerecord_base_shardable] do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
-      shards_configurations.each do |shard, configuration|
+      shards_configurations.each do |shard, _|
         next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
-        puts "== Creating shard #{shard_group}:#{shard}"
-        ActiveRecord::Tasks::DatabaseTasks.create(configuration)
+        Rails::Sharding.using_shard(shard_group, shard) do
+          ActiveRecord::Tasks::DatabaseTasks.check_protected_environments!
+        end
       end
     end
   end
 
-  desc "Drops database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
-  task drop: [:environment] do
-    Rails::Sharding.configurations.each do |shard_group, shards_configurations|
-      next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
+  desc "Creates database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
+  task create: [:environment] do
+    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
+      puts "== Creating shard #{shard_group}:#{shard}"
+      ActiveRecord::Tasks::DatabaseTasks.create(configuration)
+    end
+  end
 
-      shards_configurations.each do |shard, configuration|
-        next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
-        puts "== Dropping shard #{shard_group}:#{shard}"
-        ActiveRecord::Tasks::DatabaseTasks.drop(configuration)
-      end
+  desc "Drops database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
+  task drop: [:environment, :check_protected_environments] do
+    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
+      puts "== Dropping shard #{shard_group}:#{shard}"
+      ActiveRecord::Tasks::DatabaseTasks.drop(configuration)
     end
   end
 
@@ -40,11 +47,9 @@ shards_namespace = namespace :shards do
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
       # configures path for migrations of this shard group and creates dir if necessary
-      shard_group_migrations_dir = File.join(Rails::Sharding::Config.shards_migrations_dir, shard_group.to_s)
-      ActiveRecord::Tasks::DatabaseTasks.migrations_paths = shard_group_migrations_dir
-      FileUtils.mkdir_p(shard_group_migrations_dir)
+      setup_migrations_path(shard_group)
 
-      shards_configurations.each do |shard, configuration|
+      shards_configurations.each do |shard, _|
         next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
         puts "== Migrating shard #{shard_group}:#{shard}"
         Rails::Sharding.using_shard(shard_group, shard) do
@@ -78,18 +83,13 @@ shards_namespace = namespace :shards do
     task dump: [:_make_activerecord_base_shardable] do
       require "active_record/schema_dumper"
 
-      Rails::Sharding.configurations.each do |shard_group, shards_configurations|
-        next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
+      Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, _configuration|
+        puts "== Dumping schema of #{shard_group}:#{shard}"
 
-        shards_configurations.each do |shard, configuration|
-          next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
-          puts "== Dumping schema of #{shard_group}:#{shard}"
-
-          schema_filename = shard_schema_path(shard_group, shard)
-          File.open(schema_filename, "w:utf-8") do |file|
-            Rails::Sharding.using_shard(shard_group, shard) do
-              ActiveRecord::SchemaDumper.dump(Rails::Sharding::ConnectionHandler.retrieve_connection(shard_group, shard), file)
-            end
+        schema_filename = shard_schema_path(shard_group, shard)
+        File.open(schema_filename, "w:utf-8") do |file|
+          Rails::Sharding.using_shard(shard_group, shard) do
+            ActiveRecord::SchemaDumper.dump(Rails::Sharding::ConnectionHandler.retrieve_connection(shard_group, shard), file)
           end
         end
       end
@@ -100,13 +100,14 @@ shards_namespace = namespace :shards do
     end
 
     desc "Loads schema.rb file into the shards (options: RAILS_ENV=x, SHARD_GROUP=x, SHARD=x)"
-    task load: [:_make_activerecord_base_shardable] do
+    task load: [:_make_activerecord_base_shardable, :check_protected_environments] do
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
-        shards_configurations.each do |shard, configuration|
+        shards_configurations.each do |shard, _|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
           puts "== Loading schema of #{shard_group}:#{shard}"
 
@@ -125,7 +126,7 @@ shards_namespace = namespace :shards do
   end
 
   namespace :migrate do
-    desc  'Rollbacks the shards one migration and re migrate up (options: RAILS_ENV=x, VERSION=x, STEP=x, SHARD_GROUP=x, SHARD=x).'
+    desc 'Rollbacks the shards one migration and re migrate up (options: RAILS_ENV=x, VERSION=x, STEP=x, SHARD_GROUP=x, SHARD=x).'
     task redo: [:environment] do
       if ENV["VERSION"]
         shards_namespace["migrate:down"].invoke
@@ -141,15 +142,15 @@ shards_namespace = namespace :shards do
 
     desc 'Runs the "up" for a given migration VERSION.'
     task up: [:_make_activerecord_base_shardable] do
-      version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
-      raise "VERSION is required" unless version
+      version = get_version_or_else "VERSION is required"
 
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
-        shards_configurations.each do |shard, configuration|
+        shards_configurations.each do |shard, _|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
           puts "== Migrating up shard #{shard_group}:#{shard}"
           Rails::Sharding.using_shard(shard_group, shard) do
@@ -163,15 +164,15 @@ shards_namespace = namespace :shards do
 
     desc 'Runs the "down" for a given migration VERSION.'
     task down: [:_make_activerecord_base_shardable] do
-      version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
-      raise "VERSION is required - To go down one migration, run db:rollback" unless version
+      version = get_version_or_else "VERSION is required - To go down one migration, run db:rollback"
 
       Rails::Sharding.configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
-        shards_configurations.each do |shard, configuration|
+        shards_configurations.each do |shard, _|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
           puts "== Migrating down shard #{shard_group}:#{shard}"
           Rails::Sharding.using_shard(shard_group, shard) do
@@ -190,9 +191,10 @@ shards_namespace = namespace :shards do
     Rails::Sharding.configurations.each do |shard_group, shards_configurations|
       next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+      # configures path for migrations of this shard group and creates dir if necessary
       setup_migrations_path(shard_group)
 
-      shards_configurations.each do |shard, configuration|
+      shards_configurations.each do |shard, _|
         next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
         puts "== Rolling back shard #{shard_group}:#{shard}"
         Rails::Sharding.using_shard(shard_group, shard) do
@@ -206,15 +208,9 @@ shards_namespace = namespace :shards do
 
   desc "Retrieves the current schema version number"
   task version: [:_make_activerecord_base_shardable] do
-    Rails::Sharding.configurations.each do |shard_group, shards_configurations|
-      next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
-
-      shards_configurations.each do |shard, configuration|
-        next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
-
-        Rails::Sharding.using_shard(shard_group, shard) do
-          puts "Shard #{shard_group}:#{shard} version: #{ActiveRecord::Migrator.current_version}"
-        end
+    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, _configuration|
+      Rails::Sharding.using_shard(shard_group, shard) do
+        puts "Shard #{shard_group}:#{shard} version: #{ActiveRecord::Migrator.current_version}"
       end
     end
   end
@@ -226,9 +222,10 @@ shards_namespace = namespace :shards do
       Rails::Sharding.test_configurations.each do |shard_group, shards_configurations|
         next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
 
+        # configures path for migrations of this shard group and creates dir if necessary
         setup_migrations_path(shard_group)
 
-        shards_configurations.each do |shard, configuration|
+        shards_configurations.each do |shard, _|
           next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
 
           puts "== Loading test schema on shard #{shard_group}:#{shard}"
@@ -237,6 +234,10 @@ shards_namespace = namespace :shards do
             should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
             Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
+            # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
+            initial_rails_env = Rails.env
+            Rails.env = 'test'
+
             schema_filename = shard_schema_path(shard_group, shard)
             ActiveRecord::Tasks::DatabaseTasks.check_schema_file(schema_filename)
             Rails::Sharding.using_shard(shard_group, shard) do
@@ -244,6 +245,9 @@ shards_namespace = namespace :shards do
               load(schema_filename)
             end
           ensure
+            # restores rails env
+            Rails.env = initial_rails_env
+
             if should_reconnect
               # reestablishes connection for RAILS_ENV environment (whatever that is)
               Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
@@ -262,26 +266,20 @@ shards_namespace = namespace :shards do
 
     desc "Empty the test shards (drops all tables) (options: SHARD_GROUP=x, SHARD=x)"
     task :purge => [:_make_activerecord_base_shardable] do
-      Rails::Sharding.test_configurations.each do |shard_group, shards_configurations|
-        next if ENV["SHARD_GROUP"] && ENV["SHARD_GROUP"] != shard_group.to_s
+      Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
+        puts "== Purging test shard #{shard_group}:#{shard}"
+        begin
+          # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
+          should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
+          Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
-        shards_configurations.each do |shard, configuration|
-          next if ENV["SHARD"] && ENV["SHARD"] != shard.to_s
-
-          puts "== Purging test shard #{shard_group}:#{shard}"
-          begin
-            # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
-            should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
-            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
-
-            Rails::Sharding.using_shard(shard_group, shard) do
-              ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
-            end
-          ensure
-            if should_reconnect
-              # reestablishes connection for RAILS_ENV environment (whatever that is)
-              Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
-            end
+          Rails::Sharding.using_shard(shard_group, shard) do
+            ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
+          end
+        ensure
+          if should_reconnect
+            # reestablishes connection for RAILS_ENV environment (whatever that is)
+            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
           end
         end
       end
@@ -303,5 +301,11 @@ shards_namespace = namespace :shards do
     shard_group_schemas_dir = File.join(Rails::Sharding::Config.shards_schemas_dir, shard_group.to_s)
     FileUtils.mkdir_p(shard_group_schemas_dir)
     File.join(shard_group_schemas_dir, shard_name + "_schema.rb")
+  end
+
+  def get_version_or_else(error_message='VERSION is required')
+    version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
+    raise error_message unless version
+    version
   end
 end
