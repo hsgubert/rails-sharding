@@ -143,6 +143,29 @@ rake shards:migrate SHARD_GROUP=shard_group_1
 rake shards:migrate SHARD_GROUP=shard_group_1 SHARD=shard1
 ```
 
+## Gem Options
+Running the `rails g rails_sharding:scaffold` will create an initializer at `config/initializers/rails-sharding.rb`. You can pass additional configurations on this initializer to control the gem behavior. You can see below all available options and their default values:
+```ruby
+# config/initializers/rails-sharding.rb
+
+Rails::Sharding.setup do |config|
+  # If true one connection will be established per shard (in every shard group) on startup.
+  # If false the user must call Shards::ConnectionHandler.establish_connection(shard_group, shard_name) manually at least once before using each shard.
+  config.establish_all_connections_on_setup = true
+
+  # If true the method #using_shard will be mixed in ActiveRecord scopes. Put this to false if you don't want the gem to modify ActiveRecord
+  config.extend_active_record_scope = true,
+
+  # Specifies where to find the definition of the shards configurations
+  config.shards_config_file = 'config/shards.yml',
+
+  # Specifies where to find the migrations for each shard group
+  config.shards_migrations_dir = 'db/shards_migrations',
+
+  # Specifies where to find the schemas for each shard group
+  config.shards_schemas_dir = 'db/shards_schemas'
+end
+```
 
 ## Development and Contributing
 
