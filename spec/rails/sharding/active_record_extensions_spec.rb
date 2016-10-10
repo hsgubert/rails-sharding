@@ -68,14 +68,11 @@ describe Rails::Sharding::ActiveRecordExtensions do
     end
 
     it 'should allow chaining before called with explicit attributes of the model' do
-      skip('doenst work for now')
       new_user = User.using_shard(:shard_group1, :shard1).create(:username => 'test_username')
 
-      # This test doesn't pass because when we pass a hash to where, it checks the database for the model
-      # attributes. Since this happens before we call using_shard, it crashes.
-      # Solution would be to perhaps say in the model that the master_database
-      # doesn't include a table for the model, and set a default shard for AR
-      # to look for column names
+      # This test doesn't pass on RAils 4 because when we pass a hash to where,
+      # it checks the database for the model attributes. Since this happens
+      # before we call using_shard, it crashes. Rails 5 fixes that
       expect(User.where(username: "test_username").using_shard(:shard_group1, :shard1).first).to be == new_user
     end
   end

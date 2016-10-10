@@ -17,11 +17,13 @@ module Rails::Sharding
     def self.establish_connection(shard_group, shard_name, environment=nil)
       self.setup unless defined? @@connection_handler
 
-      unless configurations = (environment.nil? ? Core.configurations : Core.configurations(environment))
+      configurations = (environment.nil? ? Core.configurations : Core.configurations(environment))
+      if configurations.nil?
         raise Errors::ConfigNotFoundError, "Cannot find configuration for environment '#{environment}' in #{Config.shards_config_file}"
       end
 
-      unless shard_group_configurations = configurations[shard_group.to_s]
+      shard_group_configurations = configurations[shard_group.to_s]
+      if shard_group_configurations.nil?
         raise Errors::ConfigNotFoundError, "Cannot find configuration for shard_group '#{shard_group}' in environment '#{environment}' in #{Config.shards_config_file}"
       end
 
@@ -29,7 +31,7 @@ module Rails::Sharding
       begin
         connection_name = connection_name(shard_group, shard_name)
         connection_spec = resolver.spec(shard_name.to_sym, connection_name)
-      rescue ActiveRecord::AdapterNotSpecified => e
+      rescue ActiveRecord::AdapterNotSpecified
         raise Errors::ConfigNotFoundError, "Cannot find configuration for shard '#{shard_group}:#{shard_name}' in environment '#{environment}' in #{Config.shards_config_file}"
       end
 
