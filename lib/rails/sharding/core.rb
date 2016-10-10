@@ -14,8 +14,14 @@ module Rails::Sharding
 
       ShardThreadRegistry.current_shard_group = shard_group
       ShardThreadRegistry.current_shard_name = shard_name
+      ShardThreadRegistry.shard_connection_used = false
       yield
     ensure
+      # shows warning to user
+      if !ShardThreadRegistry.shard_connection_used
+        puts "Warning: no connection to shard '#{ShardThreadRegistry.current_shard_group}:#{ShardThreadRegistry.current_shard_name}' was made inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded"
+      end
+
       # Releases connections in case user left some connection in the reserved state
       # (by calling retrieve_connection instead of with_connection). Also, using
       # normal activerecord queries leaves a connection in the reserved state
