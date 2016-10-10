@@ -27,7 +27,8 @@ You can also use the block syntax, where all your queries inside will be directe
 You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
 
 ## Compatibility
-As of now this gem has been tested only with Rails 4.2. It does not work yet with Rails 5.
+Gem version 0.1.1 -> compatible with Rails 4.2
+Gem version 1.0.0 -> compatible with Rails 5.0
 
 ## Installation
 
@@ -83,7 +84,7 @@ rake shards:create
 Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema. For example, add the following migration to your `db/shards_migrations/shard_group1`:
 ```ruby
 # 20160808000000_create_users.rb
-class CreateClients < ActiveRecord::Migration
+class CreateClients < ActiveRecord::Migration[5.0]
   def up
     create_table :users do |t|
       t.string :username, :limit => 100
@@ -154,4 +155,4 @@ The gem is available as open source under the terms of the [MIT License](http://
 
 ## Acknowledgements
 
-This gem was inspired and based on several other gems like: [octopus](https://github.com/thiagopradi/octopus), [shard_handler](https://github.com/locaweb/shard_handler) and [active_record_shards](https://github.com/zendesk/active_record_shards).
+This gem was inspired on several other gems like: [octopus](https://github.com/thiagopradi/octopus), [shard_handler](https://github.com/locaweb/shard_handler) and [active_record_shards](https://github.com/zendesk/active_record_shards).
