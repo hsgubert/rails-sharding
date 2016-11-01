@@ -31,7 +31,10 @@ module Rails::Sharding
 
     def self.configurations(environment=Rails.env)
       @@db_configs ||= YAML.load_file(Config.shards_config_file)
-      @@db_configs[environment]
+      environment_config = @@db_configs[environment]
+      return environment_config if environment_config
+
+      raise Errors::ConfigNotFoundError, 'Found no shard configurations for enviroment "' + environment + '" in ' + Config.shards_config_file.to_s + ' file was not found'
     rescue Errno::ENOENT
       raise Errors::ConfigNotFoundError, Config.shards_config_file.to_s + ' file was not found'
     end

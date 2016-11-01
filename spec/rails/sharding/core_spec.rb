@@ -45,7 +45,7 @@ describe Rails::Sharding::Core do
       expect(described_class.configurations('test')).to be == YAML.load_file('spec/fixtures/shards.yml')['test']
     end
 
-    it 'should raise error is shards.yml file is not found' do
+    it 'should raise error if shards.yml file is not found' do
       described_class.reset_configurations_cache
       original_shards_config_file = Rails::Sharding::Config.shards_config_file
       begin
@@ -56,6 +56,12 @@ describe Rails::Sharding::Core do
       ensure
         Rails::Sharding::Config.shards_config_file = original_shards_config_file
       end
+    end
+
+    it 'should raise error if shards.yml does not have configuration for environment' do
+      expect do
+        described_class.configurations('wrong_env')
+      end.to raise_error Rails::Sharding::Errors::ConfigNotFoundError
     end
   end
 
