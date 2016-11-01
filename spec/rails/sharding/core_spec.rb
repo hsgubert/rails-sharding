@@ -73,13 +73,13 @@ describe Rails::Sharding::Core do
 
   describe '.shard_groups' do
     it 'should return an array of all existing shard groups in shards.yml' do
-      expect(described_class.shard_groups).to be == ['shard_group1']
+      expect(described_class.shard_groups).to be == ['mysql_group']
     end
   end
 
   describe '.shard_names' do
     it 'should return an array of all existing shard groups in shards.yml' do
-      expect(described_class.shard_names('shard_group1')).to be == ['shard1', 'shard2']
+      expect(described_class.shard_names('mysql_group')).to be == ['shard1', 'shard2']
     end
   end
 
@@ -102,7 +102,7 @@ describe Rails::Sharding::Core do
   describe '.using_shard' do
     it 'should yield block with shard set in a thread-specific storage' do
       expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be false
-      described_class.using_shard(:shard_group1, :shard1) do
+      described_class.using_shard(:mysql_group, :shard1) do
         expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be true
 
         # avoids warning of unused connection during tests
@@ -113,8 +113,8 @@ describe Rails::Sharding::Core do
     end
 
     it 'should release shard connection from connection pool upon finishing the block' do
-      described_class.using_shard(:shard_group1, :shard1) do
-        expect(Rails::Sharding::ConnectionHandler.connection_pool(:shard_group1, :shard1)).to receive(:release_connection).once
+      described_class.using_shard(:mysql_group, :shard1) do
+        expect(Rails::Sharding::ConnectionHandler.connection_pool(:mysql_group, :shard1)).to receive(:release_connection).once
 
         # avoids warning of unused connection during tests
         expect(Rails::Sharding::ShardThreadRegistry.shard_connection_used).to be false

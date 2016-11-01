@@ -6,7 +6,8 @@ RSpec::Core::RakeTask.new(:spec)
 task :default => :spec
 
 # defines an environment task so we can run rake tasks from lib/tasks/rails-sharding.rake.
-# They require the :environment task, which is defined by rails, but we don need anything
+# The tasks on rails-sharding.rake depend on the :environment task, which is usuallu defined
+# by rails. In our case, we just stub it so the rake tasks run
 task :environment do
   # do nothing
 end
@@ -16,12 +17,7 @@ namespace :db do
 
     desc 'Loads gem test environment and rake tasks from gem'
     task :load_env do
-      require 'rspec'
-
-      # requires spec helper but ensures no test coverage is reported to codeclimate
-      ENV['CODECLIMATE_REPO_TOKEN'] = nil
-      require './spec/spec_helper'
-      
+      require './spec/load_gem_test_env'
       load 'lib/tasks/rails-sharding.rake'
     end
 

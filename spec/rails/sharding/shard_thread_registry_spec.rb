@@ -15,9 +15,9 @@ describe Rails::Sharding::ShardThreadRegistry do
       expect(described_class.current_shard_group).to be_nil
       expect(described_class.current_shard_name).to be_nil
 
-      described_class.current_shard_group = 'shard_group1'
+      described_class.current_shard_group = 'mysql_group'
       described_class.current_shard_name = 'shard1'
-      expect(described_class.current_shard_group).to be == :shard_group1
+      expect(described_class.current_shard_group).to be == :mysql_group
       expect(described_class.current_shard_name).to be == :shard1
 
       described_class.current_shard_group = ''
@@ -28,7 +28,7 @@ describe Rails::Sharding::ShardThreadRegistry do
 
     it 'should be a thread-specific variable' do
       main_thread = Thread.current
-      described_class.current_shard_group = :shard_group1
+      described_class.current_shard_group = :mysql_group
       described_class.current_shard_name = :shard1
 
       secondary_thread = Thread.new do
@@ -41,7 +41,7 @@ describe Rails::Sharding::ShardThreadRegistry do
       end
 
       Thread.stop
-      expect(described_class.current_shard_group).to be == :shard_group1
+      expect(described_class.current_shard_group).to be == :mysql_group
       expect(described_class.current_shard_name).to be == :shard1
 
       secondary_thread.wakeup
@@ -54,7 +54,7 @@ describe Rails::Sharding::ShardThreadRegistry do
       expect(described_class.connecting_to_master?).to be true
       expect(described_class.connecting_to_shard?).to be false
 
-      described_class.current_shard_group = :shard_group1
+      described_class.current_shard_group = :mysql_group
       expect(described_class.connecting_to_master?).to be true
       expect(described_class.connecting_to_shard?).to be false
 
@@ -66,7 +66,7 @@ describe Rails::Sharding::ShardThreadRegistry do
 
   describe '.connect_back_to_master!' do
     it 'should reset all thread-specific variables' do
-      described_class.current_shard_group = :shard_group1
+      described_class.current_shard_group = :mysql_group
       described_class.current_shard_name = :shard1
       described_class.shard_connection_used = true
 

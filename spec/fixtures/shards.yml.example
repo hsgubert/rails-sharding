@@ -1,4 +1,4 @@
-default: &default
+mysql_default: &mysql_default
   adapter: mysql2
   encoding: utf8
   reconnect: false
@@ -7,29 +7,22 @@ default: &default
   password: '____'
   socket: /var/run/mysqld/mysqld.sock
 
+# This is the environment that is going to be loaded in the rails-sharding gem
+# test, and is also the set of shards that is created when you run
+# `rake db:test:prepare`.
+# (we test the gem simulating a rails app in development environment)
 development:
-  shard_group1:
+  mysql_group:
     shard1:
-      <<: *default
-      database: group1_shard1_development
+      <<: *mysql_default
+      database: mysqlgroup_shard1
     shard2:
-      <<: *default
-      database: group1_shard2_development
+      <<: *mysql_default
+      database: mysqlgroup_shard2
 
+# This environment is never loaded or created, it is just here for testing the
+# configuration loading code
 test:
-  shard_group1:
-    shard1:
-      <<: *default
-      database: group1_shard1_test
-    shard2:
-      <<: *default
-      database: group1_shard2_test
-
-production:
-  shard_group1:
-    shard1:
-      <<: *default
-      database: group1_shard1
-    shard2:
-      <<: *default
-      database: group1_shard2
+  test_group:
+    test_shard:
+      database: test_shard
