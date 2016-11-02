@@ -24,8 +24,8 @@ describe Rails::Sharding::ShardableModel do
       TestModel.connection_pool
     end
 
-    it 'should retrive sharded connection_pool if using shard' do
-      expect(Rails::Sharding::ConnectionHandler).to receive(:connection_pool).twice.with(:mysql_group, :shard1)
+    it 'should retrieve sharded connection_pool if using shard' do
+      expect(Rails::Sharding::ConnectionHandler).to receive(:connection_pool).twice.with(:mysql_group, :shard1) # called explicitly below and on block end
       Rails::Sharding.using_shard(:mysql_group, :shard1) do
         TestModel.connection_pool
       end

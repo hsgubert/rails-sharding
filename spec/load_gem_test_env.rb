@@ -47,4 +47,7 @@ Rails::Sharding::Config::DEFAULT_CONFIGS[:shards_schemas_dir] = shards_schemas_d
 Rails::Sharding::Config.shards_schemas_dir = shards_schemas_dir
 
 # Setups rails-sharding, establishing connection to test databases
-Rails::Sharding.setup
+Rails::Sharding.setup do |config|
+  config.no_connection_retrieved_warning = false
+end
+$rails_sharding_configs_changed = [:no_connection_retrieved_warning]

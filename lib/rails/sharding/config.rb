@@ -17,6 +17,12 @@ module Rails::Sharding
       # shard you're querying
       add_shard_tag_to_query_logs: true,
 
+      # If true a warning will be printed everytime a using_shard block ends without
+      # the shard connection being retrieved at least once inside the block. This warning
+      # is helpful to remember the developer to include ShardableModel module on the
+      # sharded models, otherwise they will always connect to the master database.
+      no_connection_retrieved_warning: true,
+
       # Specifies where to find the definition of the shards configurations
       shards_config_file: 'config/shards.yml',
 
@@ -31,6 +37,5 @@ module Rails::Sharding
       self.cattr_accessor config_name
       self.send(config_name.to_s + '=', default_value)
     end
-
   end
 end

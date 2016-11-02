@@ -18,8 +18,8 @@ module Rails::Sharding
       yield
     ensure
       # shows warning to user
-      if !ShardThreadRegistry.shard_connection_used
-        puts "Warning: no connection to shard '#{ShardThreadRegistry.current_shard_group}:#{ShardThreadRegistry.current_shard_name}' was made inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded"
+      if Config.no_connection_retrieved_warning && !ShardThreadRegistry.shard_connection_used
+        puts "Warning: no connection to shard '#{ShardThreadRegistry.current_shard_group}:#{ShardThreadRegistry.current_shard_name}' was retrieved inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded. Disable this warning with Rails::Sharding::Config.no_connection_retrieved_warning = false."
       end
 
       # Releases connections in case user left some connection in the reserved state
