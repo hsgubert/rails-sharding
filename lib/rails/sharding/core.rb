@@ -10,23 +10,21 @@ module Rails::Sharding
 
     # Opens a block where all queries will be directed to the selected shard
     def self.using_shard(shard_group, shard_name)
-      raise 'Cannot nest using_shard blocks' if ShardThreadRegistry.connecting_to_shard?
-
-      ShardThreadRegistry.current_shard_group = shard_group
-      ShardThreadRegistry.current_shard_name = shard_name
-      ShardThreadRegistry.shard_connection_used = false
+      ShardThreadRegistry.push_current_shard(shard_group, shard_name)
       yield
     ensure
+      shard_group, shard_name, connection_used = ShardThreadRegistry.pop_current_shard
+
       # shows warning to user
-      if Config.no_connection_retrieved_warning && !ShardThreadRegistry.shard_connection_used
-        puts "Warning: no connection to shard '#{ShardThreadRegistry.current_shard_group}:#{ShardThreadRegistry.current_shard_name}' was retrieved inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded. Disable this warning with Rails::Sharding::Config.no_connection_retrieved_warning = false."
+      if Config.no_connection_retrieved_warning && !connection_used
+        puts "Warning: no connection to shard '#{shard_group}:#{shard_name}' was retrieved inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded. Disable this warning with Rails::Sharding::Config.no_connection_retrieved_warning = false."
       end
 
       # Releases connections in case user left some connection in the reserved state
       # (by calling retrieve_connection instead of with_connection). Also, using
       # normal activerecord queries leaves a connection in the reserved state
-      ConnectionHandler.connection_pool(*ShardThreadRegistry.current_shard_group_and_name).release_connection
-      ShardThreadRegistry.connect_back_to_master!
+      # Obs: don't do this with a master database connection
+      ConnectionHandler.connection_pool(shard_group, shard_name).release_connection if shard_group && shard_name
     end
 
     def self.configurations(environment=Rails.env)

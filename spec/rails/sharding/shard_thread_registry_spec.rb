@@ -15,25 +15,25 @@ describe Rails::Sharding::ShardThreadRegistry do
       expect(described_class.current_shard_group).to be_nil
       expect(described_class.current_shard_name).to be_nil
 
-      described_class.current_shard_group = 'mysql_group'
-      described_class.current_shard_name = 'shard1'
-      expect(described_class.current_shard_group).to be == :mysql_group
+      described_class.push_current_shard('shard_group1', 'shard1')
+      expect(described_class.current_shard_group).to be == :shard_group1
       expect(described_class.current_shard_name).to be == :shard1
 
-      described_class.current_shard_group = ''
-      described_class.current_shard_name = ''
+      described_class.push_current_shard('', '')
+      expect(described_class.current_shard_group).to be_nil
+      expect(described_class.current_shard_name).to be_nil
+
+      described_class.push_current_shard(nil, nil)
       expect(described_class.current_shard_group).to be_nil
       expect(described_class.current_shard_name).to be_nil
     end
 
     it 'should be a thread-specific variable' do
       main_thread = Thread.current
-      described_class.current_shard_group = :mysql_group
-      described_class.current_shard_name = :shard1
+      described_class.push_current_shard(:shard_group1, :shard1)
 
       secondary_thread = Thread.new do
-        described_class.current_shard_group = :shard_group2
-        described_class.current_shard_name = :shard2
+        described_class.push_current_shard(:shard_group2, :shard2)
         main_thread.wakeup
         Thread.stop
         expect(described_class.current_shard_group).to be == :shard_group2
@@ -41,7 +41,7 @@ describe Rails::Sharding::ShardThreadRegistry do
       end
 
       Thread.stop
-      expect(described_class.current_shard_group).to be == :mysql_group
+      expect(described_class.current_shard_group).to be == :shard_group1
       expect(described_class.current_shard_name).to be == :shard1
 
       secondary_thread.wakeup
@@ -54,27 +54,35 @@ describe Rails::Sharding::ShardThreadRegistry do
       expect(described_class.connecting_to_master?).to be true
       expect(described_class.connecting_to_shard?).to be false
 
-      described_class.current_shard_group = :mysql_group
+      described_class.push_current_shard(:shard_group1, :shard1)
+      expect(described_class.connecting_to_master?).to be false
+      expect(described_class.connecting_to_shard?).to be true
+
+      described_class.push_current_shard(nil, nil)
       expect(described_class.connecting_to_master?).to be true
       expect(described_class.connecting_to_shard?).to be false
 
-      described_class.current_shard_name = :shard1
+      described_class.pop_current_shard
       expect(described_class.connecting_to_master?).to be false
       expect(described_class.connecting_to_shard?).to be true
+
+      described_class.pop_current_shard
+      expect(described_class.connecting_to_master?).to be true
+      expect(described_class.connecting_to_shard?).to be false
     end
   end
 
   describe '.connect_back_to_master!' do
     it 'should reset all thread-specific variables' do
-      described_class.current_shard_group = :mysql_group
-      described_class.current_shard_name = :shard1
-      described_class.shard_connection_used = true
+      described_class.push_current_shard(:shard_group1, :shard1)
+      described_class.push_current_shard(:shard_group1, :shard2)
+      described_class.notify_connection_retrieved
 
       described_class.connect_back_to_master!
 
       expect(described_class.current_shard_group).to be_nil
       expect(described_class.current_shard_name).to be_nil
-      expect(described_class.current_shard_name).to be_falsey
+      expect(described_class.current_connection_used?).to be_nil
     end
   end
 

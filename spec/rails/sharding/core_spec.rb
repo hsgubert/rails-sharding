@@ -104,10 +104,6 @@ describe Rails::Sharding::Core do
       expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be false
       described_class.using_shard(:mysql_group, :shard1) do
         expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be true
-
-        # avoids warning of unused connection during tests
-        expect(Rails::Sharding::ShardThreadRegistry.shard_connection_used).to be false
-        Rails::Sharding::ShardThreadRegistry.shard_connection_used = true
       end
       expect(Rails::Sharding::ShardThreadRegistry.connecting_to_shard?).to be false
     end
@@ -115,11 +111,26 @@ describe Rails::Sharding::Core do
     it 'should release shard connection from connection pool upon finishing the block' do
       described_class.using_shard(:mysql_group, :shard1) do
         expect(Rails::Sharding::ConnectionHandler.connection_pool(:mysql_group, :shard1)).to receive(:release_connection).once
-
-        # avoids warning of unused connection during tests
-        expect(Rails::Sharding::ShardThreadRegistry.shard_connection_used).to be false
-        Rails::Sharding::ShardThreadRegistry.shard_connection_used = true
       end
     end
+
+    it 'should allow nesting' do
+      expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
+
+      described_class.using_shard(:mysql_group, :shard1) do
+        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard1]
+        described_class.using_shard(:mysql_group, :shard2) do
+          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard2]
+          described_class.using_shard(nil, nil) do
+            expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
+          end
+          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard2]
+        end
+        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard1]
+      end
+
+      expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
+    end
   end
+  
 end

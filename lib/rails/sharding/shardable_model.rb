@@ -32,20 +32,22 @@ module Rails::Sharding
 
       # @overrides ActiveRecord::ConnectionHandling#connection_pool
       def sharded_connection_pool
+        ShardThreadRegistry.notify_connection_retrieved
+
         if ShardThreadRegistry.connecting_to_master?
           return original_connection_pool
         else
-          ShardThreadRegistry.shard_connection_used = true # records that shard connection was used at least once
           return ConnectionHandler.connection_pool(*ShardThreadRegistry.current_shard_group_and_name)
         end
       end
 
       # @overrides ActiveRecord::ConnectionHandling#retrieve_connection
       def sharded_retrieve_connection
+        ShardThreadRegistry.notify_connection_retrieved
+
         if ShardThreadRegistry.connecting_to_master?
           return original_retrieve_connection
         else
-          ShardThreadRegistry.shard_connection_used = true # records that shard connection was used at least once
           return ConnectionHandler.retrieve_connection(*ShardThreadRegistry.current_shard_group_and_name)
         end
       end
