@@ -18,4 +18,8 @@ RSpec.configure do |config|
     # `true` in RSpec 4.
     mocks.verify_partial_doubles = true
   end
+
+  # includes custom test helpers
+  require 'support/test_helpers'
+  config.include Support::TestHelpers
 end

@@ -3,27 +3,8 @@ require './spec/fixtures/models/account'
 require './spec/fixtures/models/user'
 
 describe Rails::Sharding::ActiveRecordExtensions do
-
-  before do
-    clear_data_from_all_shards
-  end
-
-  after do
-    clear_data_from_all_shards
-  end
-
-  # it 'should log query' do
-  #   original_logger = Account.logger
-  #   begin
-  #     Account.logger = double('logger')
-  #     allow(Account.logger).to receive(:debug?).and_return true
-  #
-  #     expect(Account.logger).to receive(:debug).once.with(/Account Load \(.+ms\)/ )
-  #     Account.using_shard(:mysql_group, :shard1).select(:id).limit(1).to_a
-  #   ensure
-  #     Account.logger = original_logger
-  #   end
-  # end
+  before { clear_data_from_all_shards }
+  after { clear_data_from_all_shards }
 
   describe '#using_shard method in model classes' do
     it 'should select shard' do
@@ -121,17 +102,5 @@ describe Rails::Sharding::ActiveRecordExtensions do
     end
   end
 
-private
-
-  def clear_data_from_all_shards
-    Rails::Sharding.shard_groups.each do |shard_group|
-      Rails::Sharding.shard_names(shard_group).each do |shard_name|
-        Rails::Sharding.using_shard(shard_group, shard_name) do
-          Account.delete_all
-          User.delete_all
-        end
-      end
-    end
-  end
 
 end

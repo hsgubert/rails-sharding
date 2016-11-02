@@ -13,6 +13,10 @@ module Rails::Sharding
       # this to false if you don't want the gem to modify ActiveRecord
       extend_active_record_scope: true,
 
+      # If true the query logs of ActiveRecord will be tagged with the corresponding
+      # shard you're querying
+      add_shard_tag_to_query_logs: true,
+
       # Specifies where to find the definition of the shards configurations
       shards_config_file: 'config/shards.yml',
 

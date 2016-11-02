@@ -1,8 +1,72 @@
 require 'spec_helper'
+require './spec/fixtures/models/account'
+require './spec/fixtures/models/user'
 
 describe Rails::Sharding::ConnectionHandler do
 
-  # context 'using '
+  context 'using real database' do
+    before { clear_data_from_all_shards }
+    after { clear_data_from_all_shards }
+
+    it 'should add shard tag to ActiveRecord query logs' do
+      original_logger = Account.logger
+      begin
+        Account.logger = spy('logger')
+
+        Rails::Sharding.using_shard(:mysql_group, :shard1) { Account.first }
+        expect(Account.logger).to have_received(:debug).once.with(/Account Load \(mysql_group:shard1\)/ )
+
+        Rails::Sharding.using_shard(:mysql_group, :shard2) { Account.count }
+        expect(Account.logger).to have_received(:debug).once.with(/\(mysql_group:shard2\)/ )
+      ensure
+        Account.logger = original_logger
+      end
+    end
+
+    it 'should add shard tag to retrieved connection query logs' do
+      original_logger = ActiveRecord::Base.logger
+      begin
+        ActiveRecord::Base.logger = spy('logger')
+
+        connection = described_class.retrieve_connection(:mysql_group, :shard2)
+        connection.execute('SELECT 1 FROM accounts', 'Custom Query')
+        expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(mysql_group:shard2\)/ )
+      ensure
+        ActiveRecord::Base.logger = original_logger
+      end
+    end
+
+    it 'should add shard tag to yielded connection query logs' do
+      original_logger = ActiveRecord::Base.logger
+      begin
+        ActiveRecord::Base.logger = spy('logger')
+
+        described_class.with_connection(:mysql_group, :shard2) do |connection|
+          connection.execute('SELECT 1 FROM accounts', 'Custom Query')
+        end
+        expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(mysql_group:shard2\)/ )
+      ensure
+        ActiveRecord::Base.logger = original_logger
+      end
+    end
+
+    it 'should not tag query logs if this option is disabled on setup' do
+      original_logger = ActiveRecord::Base.logger
+      begin
+        Rails::Sharding.setup do |config|
+          config.add_shard_tag_to_query_logs = false
+        end
+        ActiveRecord::Base.logger = spy('logger')
+
+        connection = described_class.retrieve_connection(:mysql_group, :shard2)
+        connection.execute('SELECT 1 FROM accounts', 'Custom Query')
+        expect(ActiveRecord::Base.logger).not_to have_received(:debug).with(/Custom Query \(mysql_group:shard2\)/ )
+        expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query/ )
+      ensure
+        ActiveRecord::Base.logger = original_logger
+      end
+    end
+  end
 
 
   # This test block allows us to test how methods of Rails::Sharding::ConnectionHandler
@@ -102,6 +166,7 @@ describe Rails::Sharding::ConnectionHandler do
           and_return(mock_connection_pool)
 
         mock_connection = double('connection')
+        allow(mock_connection).to receive :execute
         expect(mock_connection_pool).to receive(:with_connection).once do |&block|
           block.call mock_connection
         end

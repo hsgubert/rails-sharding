@@ -30,7 +30,7 @@ describe Rails::Sharding::Core do
         expect(ActiveRecord::Base).to respond_to :using_shard
       end
 
-      it 'should not establish all connections' do
+      it 'should not extend activerecord scopes' do
         expect(Rails::Sharding::ActiveRecordExtensions).not_to receive(:extend_active_record_scope)
         Rails::Sharding::Core.setup do |config|
           config.extend_active_record_scope = false

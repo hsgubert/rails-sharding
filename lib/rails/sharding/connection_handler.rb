@@ -49,7 +49,14 @@ module Rails::Sharding
     end
 
     def self.retrieve_connection(shard_group, shard_name)
-      connection_handler.retrieve_connection(connection_name(shard_group, shard_name))
+      connection_name = connection_name(shard_group, shard_name)
+      connection = connection_handler.retrieve_connection(connection_name)
+
+      if connection && Rails::Sharding::Config.add_shard_tag_to_query_logs
+        add_shard_tag_to_connection_log(connection, connection_name)
+      else
+        connection
+      end
     end
 
     def self.connected?(shard_group, shard_name)
@@ -57,7 +64,13 @@ module Rails::Sharding
     end
 
     def self.with_connection(shard_group, shard_name, &block)
-    	connection_pool(shard_group, shard_name).with_connection(&block)
+    	connection_pool(shard_group, shard_name).with_connection do |connection|
+        if connection && Rails::Sharding::Config.add_shard_tag_to_query_logs
+          connection_name = connection_name(shard_group, shard_name)
+          add_shard_tag_to_connection_log(connection, connection_name)
+        end
+        block.call(connection)
+      end
     end
 
     def self.remove_connection(shard_group, shard_name)
@@ -78,6 +91,32 @@ module Rails::Sharding
     # Assembles connection name in the format "shard_group:shard_name"
     def self.connection_name(shard_group, shard_name)
       shard_group.to_s + ':' + shard_name.to_s
+    end
+
+    # Adds a shard tag to the log of all queries executed through this connection
+    def self.add_shard_tag_to_connection_log(connection, shard_tag)
+      # avoids modifing connection twice
+      if connection.respond_to? :shard_tag
+        connection.shard_tag = shard_tag
+        return connection
+      end
+
+      # creates #shard_tag attribute in connection
+      connection.singleton_class.send(:attr_accessor, :shard_tag)
+      connection.shard_tag = shard_tag
+
+      # create an alias #original_execute, as a copy of the #execute for this connection
+      connection.singleton_class.send(:alias_method, :original_execute, :execute)
+
+      # defines a new #execute that adds a tag to the log
+      class << connection
+        def execute(sql, name=nil)
+          name = (name.to_s + " (#{shard_tag})").strip
+          self.original_execute(sql, name)
+        end
+      end
+
+      connection
     end
   end
 end
