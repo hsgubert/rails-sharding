@@ -18,9 +18,6 @@ module Rails::Sharding
       self.setup unless defined? @@connection_handler
 
       configurations = (environment.nil? ? Core.configurations : Core.configurations(environment))
-      if configurations.nil?
-        raise Errors::ConfigNotFoundError, "Cannot find configuration for environment '#{environment}' in #{Config.shards_config_file}"
-      end
 
       shard_group_configurations = configurations[shard_group.to_s]
       if shard_group_configurations.nil?

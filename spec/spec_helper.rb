@@ -4,7 +4,9 @@ if ENV['CODECLIMATE_REPO_TOKEN']
   CodeClimate::TestReporter.start
 elsif ENV['SIMPLECOV']
   require 'simplecov'
-  SimpleCov.start
+  SimpleCov.start do
+    add_filter "load_gem_test_env" # filter this file out of report
+  end
 end
 
 require 'load_gem_test_env'

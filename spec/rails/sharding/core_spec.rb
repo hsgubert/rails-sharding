@@ -114,6 +114,18 @@ describe Rails::Sharding::Core do
       end
     end
 
+    it 'should print warning if no_connection_retrieved_warning option is set and connection is not used in block' do
+      initial_config = Rails::Sharding::Config.no_connection_retrieved_warning
+      begin
+        Rails::Sharding::Config.no_connection_retrieved_warning = true
+        described_class.using_shard(:mysql_group, :shard1) do
+          expect(STDOUT).to receive(:puts).with(/Warning: no connection to shard 'mysql_group:shard1' was retrieved inside/)
+        end
+      ensure
+        Rails::Sharding::Config.no_connection_retrieved_warning = initial_config
+      end
+    end
+
     it 'should allow nesting' do
       expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
 
@@ -132,5 +144,5 @@ describe Rails::Sharding::Core do
       expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
     end
   end
-  
+
 end
