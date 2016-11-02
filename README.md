@@ -4,8 +4,9 @@
 [![Code Climate](https://codeclimate.com/github/hsgubert/rails-sharding/badges/gpa.svg)](https://codeclimate.com/github/hsgubert/rails-sharding)
 [![Test Coverage](https://codeclimate.com/github/hsgubert/rails-sharding/badges/coverage.svg)](https://codeclimate.com/github/hsgubert/rails-sharding/coverage)
 [![Gem Version](https://badge.fury.io/rb/rails-sharding.svg)](https://badge.fury.io/rb/rails-sharding)
+[![Dependency Status](https://gemnasium.com/badges/github.com/hsgubert/rails-sharding.svg)](https://gemnasium.com/github.com/hsgubert/rails-sharding)
 
-Simple and robust sharding for Rails, including Migrations and ActiveRecord extensions
+Simple and robust sharding gem for Rails, including Migrations and ActiveRecord extensions
 
 This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. It also provides rake tasks and migrations to help you manage the schema by shard groups.
 
@@ -27,7 +28,7 @@ You can also use the block syntax, where all your queries inside will be directe
 You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
 
 ## Compatibility
-Gem version 1.0.0 -> compatible with Rails 5.0
+Gem version 1.x.x -> compatible with Rails 5.0
 
 Gem version 0.1.1 -> compatible with Rails 4.2
 
