@@ -5,7 +5,10 @@ rvm:
 services:
   - mysql
   - postgresql
-before_install: gem install bundler -v 1.12.4
+before_install:
+  - gem install bundler -v 1.12.4
 before_script:
   - cp spec/fixtures/shards.yml.travis spec/fixtures/shards.yml
   - rake db:test:prepare
+after_success:
+  - bundle exec codeclimate-test-reporter
