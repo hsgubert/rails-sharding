@@ -6,6 +6,13 @@ mysql_default: &mysql_default
   username: travis
   socket: /var/run/mysqld/mysqld.sock
 
+postgres_default: &postgres_default
+  adapter: postgresql
+  encoding: utf8
+  reconnect: true
+  pool: 5
+  username: postgres
+
 # This is the environment that is going to be loaded in the rails-sharding gem
 # test, and is also the set of shards that is created when you run
 # `rake db:test:prepare`.
@@ -18,6 +25,13 @@ development:
     shard2:
       <<: *mysql_default
       database: mysqlgroup_shard2
+  postgres_group:
+    shard1:
+      <<: *postgres_default
+      database: postgresgroup_shard1
+    shard2:
+      <<: *postgres_default
+      database: postgresgroup_shard2
 
 # This environment is never loaded or created, it is just here for testing the
 # configuration loading code

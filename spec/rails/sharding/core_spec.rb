@@ -73,7 +73,7 @@ describe Rails::Sharding::Core do
 
   describe '.shard_groups' do
     it 'should return an array of all existing shard groups in shards.yml' do
-      expect(described_class.shard_groups).to be == ['mysql_group']
+      expect(described_class.shard_groups).to be == ['mysql_group', 'postgres_group']
     end
   end
 

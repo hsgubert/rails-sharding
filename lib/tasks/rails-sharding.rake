@@ -37,7 +37,15 @@ shards_namespace = namespace :shards do
   task drop: [:environment, :check_protected_environments] do
     Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
       puts "== Dropping shard #{shard_group}:#{shard}"
+
+      # closes connections with shard before dropping (postgres requires this, mysql does not but there is no harm)
+      Rails::Sharding::ConnectionHandler.remove_connection(shard_group, shard)
+
       ActiveRecord::Tasks::DatabaseTasks.drop(configuration)
+
+      # reestablishes connection (because we removed before). You can do this even if the database does not exist yet,
+      # you just cannot retrieve the connection yet.
+      Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
     end
   end
 

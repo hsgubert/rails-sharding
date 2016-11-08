@@ -4,6 +4,7 @@ rvm:
   - 2.3.1
 services:
   - mysql
+  - postgresql
 before_install: gem install bundler -v 1.12.4
 before_script:
   - cp spec/fixtures/shards.yml.travis spec/fixtures/shards.yml

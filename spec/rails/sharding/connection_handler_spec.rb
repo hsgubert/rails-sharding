@@ -119,6 +119,12 @@ describe Rails::Sharding::ConnectionHandler do
         expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
           expect(connection_spec.name).to be == 'mysql_group:shard2'
         end
+        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
+          expect(connection_spec.name).to be == 'postgres_group:shard1'
+        end
+        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
+          expect(connection_spec.name).to be == 'postgres_group:shard2'
+        end
 
         described_class.establish_all_connections
       end
