@@ -11,15 +11,21 @@ describe Rails::Sharding::ConnectionHandler do
     it 'should add shard tag to ActiveRecord query logs' do
       original_logger = Account.logger
       begin
-        Account.logger = spy('logger')
+        Account.logger = User.logger = spy('logger')
 
         Rails::Sharding.using_shard(:mysql_group, :shard1) { Account.first }
         expect(Account.logger).to have_received(:debug).once.with(/Account Load \(mysql_group:shard1\)/ )
 
         Rails::Sharding.using_shard(:mysql_group, :shard2) { Account.count }
         expect(Account.logger).to have_received(:debug).once.with(/\(mysql_group:shard2\)/ )
+
+        Rails::Sharding.using_shard(:postgres_group, :shard1) { User.first }
+        expect(User.logger).to have_received(:debug).once.with(/User Load \(postgres_group:shard1\)/ )
+
+        Rails::Sharding.using_shard(:postgres_group, :shard2) { User.count }
+        expect(User.logger).to have_received(:debug).once.with(/\(postgres_group:shard2\)/ )
       ensure
-        Account.logger = original_logger
+        Account.logger = User.logger = original_logger
       end
     end
 
@@ -31,6 +37,10 @@ describe Rails::Sharding::ConnectionHandler do
         connection = described_class.retrieve_connection(:mysql_group, :shard2)
         connection.execute('SELECT 1 FROM accounts', 'Custom Query')
         expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(mysql_group:shard2\)/ )
+
+        connection = described_class.retrieve_connection(:postgres_group, :shard2)
+        connection.execute('SELECT 1 FROM accounts', 'Custom Query')
+        expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(postgres_group:shard2\)/ )
       ensure
         ActiveRecord::Base.logger = original_logger
       end
@@ -45,6 +55,11 @@ describe Rails::Sharding::ConnectionHandler do
           connection.execute('SELECT 1 FROM accounts', 'Custom Query')
         end
         expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(mysql_group:shard2\)/ )
+
+        described_class.with_connection(:postgres_group, :shard2) do |connection|
+          connection.execute('SELECT 1 FROM accounts', 'Custom Query')
+        end
+        expect(ActiveRecord::Base.logger).to have_received(:debug).once.with(/Custom Query \(postgres_group:shard2\)/ )
       ensure
         ActiveRecord::Base.logger = original_logger
       end

@@ -102,14 +102,14 @@ module Rails::Sharding
       connection.singleton_class.send(:attr_accessor, :shard_tag)
       connection.shard_tag = shard_tag
 
-      # create an alias #original_execute, as a copy of the #execute for this connection
-      connection.singleton_class.send(:alias_method, :original_execute, :execute)
+      # create an alias #original_log, as a copy of the #log for this connection
+      connection.singleton_class.send(:alias_method, :original_log, :log)
 
-      # defines a new #execute that adds a tag to the log
+      # defines a new #log that adds a tag to the log
       class << connection
-        def execute(sql, name=nil)
+        def log(sql, name="SQL", binds=[], statement_name=nil, &block)
           name = (name.to_s + " (#{shard_tag})").strip
-          self.original_execute(sql, name)
+          self.original_log(sql, name, binds, statement_name, &block)
         end
       end
 
