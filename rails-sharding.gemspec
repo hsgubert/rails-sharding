@@ -30,5 +30,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "byebug", '~> 9'
   spec.add_development_dependency "mysql2", '~> 0'
-  spec.add_development_dependency "codeclimate-test-reporter", '~> 0'
+  spec.add_development_dependency "codeclimate-test-reporter", '~> 1'
+  spec.add_development_dependency "simplecov"
 end

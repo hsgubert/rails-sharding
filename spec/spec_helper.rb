@@ -1,12 +1,9 @@
-# Adds code climate test reporter. To activate it, set the CODECLIMATE_REPO_TOKEN environment variable
-if ENV['CODECLIMATE_REPO_TOKEN']
-  require "codeclimate-test-reporter"
-  CodeClimate::TestReporter.start
-elsif ENV['SIMPLECOV']
-  require 'simplecov'
-  SimpleCov.start do
-    add_filter "load_gem_test_env" # filter this file out of report
-  end
+# setup code coverage report
+# To submit the results to code climate run CODECLIMATE_REPO_TOKEN=[token] bundle exec codeclimate-test-reporter
+# after running the tests
+require 'simplecov'
+SimpleCov.start do
+  add_filter "load_gem_test_env" # filter this file out of report
 end
 
 require 'load_gem_test_env'
