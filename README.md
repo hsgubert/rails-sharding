@@ -28,9 +28,13 @@ You can also use the block syntax, where all your queries inside will be directe
 You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
 
 ## Compatibility
-Gem version 1.x.x -> compatible with Rails 5.0
+Gem version 1.x.x:
+* Rails 5.0
+* Databases: MySQL, MariaDB, Postgres
 
-Gem version 0.1.1 -> compatible with Rails 4.2
+Gem version 0.x.x:
+* Rails 4.2
+* Databases: MySQL, MariaDB
 
 
 ## Installation
@@ -155,13 +159,16 @@ Rails::Sharding.setup do |config|
   config.establish_all_connections_on_setup = true
 
   # If true the method #using_shard will be mixed in ActiveRecord scopes. Put this to false if you don't want the gem to modify ActiveRecord
-  config.extend_active_record_scope = true,
+  config.extend_active_record_scope = true
+
+  # If true the query logs of ActiveRecord will be tagged with the corresponding shard you're querying
+  config.add_shard_tag_to_query_logs = true
 
   # Specifies where to find the definition of the shards configurations
-  config.shards_config_file = 'config/shards.yml',
+  config.shards_config_file = 'config/shards.yml'
 
   # Specifies where to find the migrations for each shard group
-  config.shards_migrations_dir = 'db/shards_migrations',
+  config.shards_migrations_dir = 'db/shards_migrations'
 
   # Specifies where to find the schemas for each shard group
   config.shards_schemas_dir = 'db/shards_schemas'
@@ -170,7 +177,15 @@ end
 
 ## Development and Contributing
 
-After checking out the repo, run `bundle` to install gems and run `rake db:test:prepare` to create the test shards. Then, run `rspec` to run the tests.
+After checking out the repo:
+
+1. Run `bundle` to install gems 
+
+1. Create your `spec/fixtures/shards.yml` based on the example on this same folder (you need MySQL and Postgres)
+
+1. Run `rake db:test:prepare` to create the test shards. 
+
+1. Run `rspec` to run the tests.
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/hsgubert/rails-sharding.
 
