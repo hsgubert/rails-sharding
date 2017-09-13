@@ -91,6 +91,8 @@ module Rails::Sharding
     end
 
     # Adds a shard tag to the log of all queries executed through this connection
+    # Obs: connection inherits from ActiveRecord::ConnectionAdapters::AbstractAdapter
+    # but its class depends on the database adapter used.
     def self.add_shard_tag_to_connection_log(connection, shard_tag)
       # avoids modifing connection twice
       if connection.respond_to? :shard_tag
@@ -107,9 +109,9 @@ module Rails::Sharding
 
       # defines a new #log that adds a tag to the log
       class << connection
-        def log(sql, name="SQL", binds=[], statement_name=nil, &block)
+        def log(sql, name="SQL", binds=[], type_casted_binds=[], statement_name=nil, &block)
           name = (name.to_s + " (#{shard_tag})").strip
-          self.original_log(sql, name, binds, statement_name, &block)
+          self.original_log(sql, name, binds, type_casted_binds, statement_name, &block)
         end
       end
 
