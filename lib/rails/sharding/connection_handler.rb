@@ -26,13 +26,30 @@ module Rails::Sharding
 
       resolver = ActiveRecord::ConnectionAdapters::ConnectionSpecification::Resolver.new(shard_group_configurations)
       begin
+        connection_spec = resolver.spec(shard_name.to_sym)
+
+        # since Rails 5.1 connection_spec already comes with :name set to whatever
+        # key you used to retrieve it from the resolver, in this case the shard_name.
+        # We don't want that, so we overwrite it with our connection name formed
+        # by shard_group:shard_name
         connection_name = connection_name(shard_group, shard_name)
-        connection_spec = resolver.spec(shard_name.to_sym, connection_name)
+        connection_spec.instance_variable_set(:@name, connection_name)
       rescue ActiveRecord::AdapterNotSpecified
-        raise Errors::ConfigNotFoundError, "Cannot find configuration for shard '#{shard_group}:#{shard_name}' in environment '#{environment}' in #{Config.shards_config_file}"
+        raise Errors::ConfigNotFoundError, "Cannot find configuration for shard '#{shard_group}:#{shard_name}' in environment '#{environment}' in #{Config.shards_config_file}, or it does not specify :adapter"
       end
 
-      connection_handler.establish_connection(connection_spec)
+      # Since Rails 5.1 we cannot use connection_handler.establish_connection anymore,
+      # because it does more than establishing_connection. It does a second
+      # connection specification lookup on Base.configurations (where our spec
+      # is not, because we define it in a shards.yml instead of the regular
+      # database.yml) and it notifies subscribers of a event that does not concern
+      # us. Because of this we directly create the connection_pool and inject to
+      # the handler.
+      # Note: we should consider writting our connection handler from scratch, since
+      # it has become simpler than reusing the one from rails. And it will not break
+      # as long as the ConnectionPool interface is stable.
+      connection_handler.remove_connection(connection_spec.name)
+      connection_handler.send(:owner_to_pool)[connection_spec.name] = ActiveRecord::ConnectionAdapters::ConnectionPool.new(connection_spec)
     end
 
     def self.connection_pool(shard_group, shard_name)
@@ -111,7 +128,7 @@ module Rails::Sharding
       class << connection
         def log(sql, name="SQL", binds=[], type_casted_binds=[], statement_name=nil, &block)
           name = (name.to_s + " (#{shard_tag})").strip
-          self.original_log(sql, name, binds, type_casted_binds, statement_name, &block)
+          original_log(sql, name, binds, type_casted_binds, statement_name, &block)
         end
       end
 

@@ -115,33 +115,38 @@ describe Rails::Sharding::ConnectionHandler do
         end.to raise_error Rails::Sharding::Errors::ConfigNotFoundError
       end
 
-      it 'should establish connection through a ActiveRecord::AbstractAdapters::ConnectionHandler' do
-        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
-          expect(connection_spec).to be_a ActiveRecord::ConnectionAdapters::ConnectionSpecification
-          expect(connection_spec.name).to be == 'mysql_group:shard1'
-          expect(connection_spec.config).to include(:database=>"mysqlgroup_shard1")
-        end
+      it 'should create a connection_pool on ActiveRecord::AbstractAdapters::ConnectionHandler' do
+        expect(@mock_connection_handler).to receive(:remove_connection).once.with('mysql_group:shard1')
+        connection_pools = {}
+        expect(@mock_connection_handler).to receive(:owner_to_pool).once.and_return(connection_pools)
 
         described_class.establish_connection(:mysql_group, :shard1)
+
+        expect(connection_pools['mysql_group:shard1']).to be_a ActiveRecord::ConnectionAdapters::ConnectionPool
+        expect(connection_pools['mysql_group:shard1'].spec.name).to be == 'mysql_group:shard1'
+        expect(connection_pools['mysql_group:shard1'].spec.config).to include(:database=>"mysqlgroup_shard1")
+
+        # just to be sure, but creating a pool does not open a connection to DB
+        connection_pools['mysql_group:shard1'].disconnect!
       end
     end
 
     describe '.establish_all_connections' do
       it 'should establish connections for all shards for the current environment' do
-        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
-          expect(connection_spec.name).to be == 'mysql_group:shard1'
-        end
-        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
-          expect(connection_spec.name).to be == 'mysql_group:shard2'
-        end
-        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
-          expect(connection_spec.name).to be == 'postgres_group:shard1'
-        end
-        expect(@mock_connection_handler).to receive(:establish_connection).once do |connection_spec|
-          expect(connection_spec.name).to be == 'postgres_group:shard2'
-        end
+        connection_pools = {}
+        expect(@mock_connection_handler).to receive(:owner_to_pool).exactly(4).times.and_return(connection_pools)
+
+        expect(@mock_connection_handler).to receive(:remove_connection).once.with('mysql_group:shard1')
+        expect(@mock_connection_handler).to receive(:remove_connection).once.with('mysql_group:shard2')
+        expect(@mock_connection_handler).to receive(:remove_connection).once.with('postgres_group:shard1')
+        expect(@mock_connection_handler).to receive(:remove_connection).once.with('postgres_group:shard2')
 
         described_class.establish_all_connections
+
+        expect(connection_pools).to have_key 'mysql_group:shard1'
+        expect(connection_pools).to have_key 'mysql_group:shard2'
+        expect(connection_pools).to have_key 'postgres_group:shard1'
+        expect(connection_pools).to have_key 'postgres_group:shard2'
       end
     end
 
