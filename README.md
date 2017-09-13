@@ -29,7 +29,7 @@ You can also pick and choose which models will be shardable, so that all the mod
 
 ## Compatibility
 Gem version 1.x.x:
-* Rails 5.0
+* Rails 5.0 and 5.1
 * Databases: MySQL, MariaDB, Postgres
 
 Gem version 0.x.x:
