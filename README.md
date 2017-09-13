@@ -8,24 +8,30 @@
 
 Simple and robust sharding gem for Rails, including Migrations and ActiveRecord extensions
 
-This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. It also provides rake tasks and migrations to help you manage the schema by shard groups.
+This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. 
 
-After you have setup your shards, accessing them is as simple as:
+Accessing shards is as simple as:
 ```ruby
+  # creating a user to a specific shard
   new_user = User.using_shard(:shard_group1, :shard1).create(username: 'x')
+  
+  # retrieving a user from a specific shard
   loaded_user = User.using_shard(:shard_group1, :shard1).where(username: 'x').first
 ```
 
-You can also use the block syntax, where all your queries inside will be directed to the correct shard:
+You can also use the block syntax:
 ```ruby
   Rails::Sharding.using_shard(:shard_group1, :shard1) do
+    # All statements inside this block will go to the selected shard
+    
+    # Do some queries
     new_user = User.create(username: 'x')
     loaded_user = User.where(username: 'x').first
     billing_infos = loaded_user.billing_infos.all
   end
 ```
 
-You can also pick and choose which models will be shardable, so that all the models that are not shardable will still be retrieved from the master database, even if inside a using_shard block.
+You can also pick and choose which models will be shardable. Non shardable models will be retrieved from the master database, even if inside a `using_shard` block.
 
 ## Compatibility
 Gem version 1.x.x:
@@ -51,7 +57,6 @@ bundle
 ```
 
 ## Creating Shards
-This gem helps you create shards that are additional and completely separate from your master database. The master database is the one that is created and managed through rails, and is the default storage for all your models.
 
 To start with the rails-sharding gem, run the command
 ```
@@ -80,7 +85,9 @@ development:
 ...
 ```
 
-Rename it to `config/shards.yml` and change it to your database configuration. This example file defines a single shard group (named `shard_group1`) containing two shards (`shard1` and `shard2`). A shard group is simply a set of shards that should have the same schema.
+Rename it to `config/shards.yml` and change it to your database configuration. This example file defines a single shard group (named `shard_group1`) containing two shards (`shard1` and `shard2`). 
+
+**A shard group is a set of shards that should have the same schema.**
 
 When you're ready to create the shards run
 ```
@@ -88,7 +95,13 @@ rake shards:create
 ```
 
 ## Migrating Shards
-Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema. For example, add the following migration to your `db/shards_migrations/shard_group1`:
+Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema. 
+
+
+As of now, there is no generator for migrations. You can use the regular rails generator and move the migrations to the `shards_migration` folder.
+
+
+For example, add the following migration to your `db/shards_migrations/shard_group1`:
 ```ruby
 # 20160808000000_create_users.rb
 class CreateClients < ActiveRecord::Migration[5.0]
