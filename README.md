@@ -188,6 +188,9 @@ Rails::Sharding.setup do |config|
 end
 ```
 
+## Wiki
+Want to know more? How to integrate with RSpec, Capistrano, etc? Take a look at our [wiki](https://github.com/hsgubert/rails-sharding/wiki).
+
 ## Development and Contributing
 
 After checking out the repo:
