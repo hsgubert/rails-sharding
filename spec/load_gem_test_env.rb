@@ -16,11 +16,12 @@ $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 # requires rails, as the gem depends on it, and sets the RAILS_ENV to development
 # (it is not the rails app we are testing, so it is better to test the gem when
 # the rails app is not in test env)
-require 'rails/all'
+require 'active_record'
 ENV['RAILS_ENV'] = 'development'
+require 'rails/sharding'
+
 Rails.env = 'development'
 
-require 'rails/sharding'
 require 'byebug'
 
 # Changes location of the config file to a fixture
