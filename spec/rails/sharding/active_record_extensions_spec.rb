@@ -73,11 +73,6 @@ describe Rails::Sharding::ActiveRecordExtensions do
 
   describe '#using_shard method in associations' do
     it 'should work for a has_many association' do
-      # skip('doenst work for now')
-
-      # This test doesn't pass because when we access a relation AR tries to access
-      # the DB connection (before we switch the connection)
-
       new_account = Account.using_shard(:mysql_group, :shard1).create!
       new_user = User.using_shard(:mysql_group, :shard1).create!(:username => 'test_username', :account_id => new_account.id)
 
