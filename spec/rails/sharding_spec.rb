@@ -9,7 +9,8 @@ describe Rails::Sharding do
     expect(defined? Rails::Sharding::Core).to be_truthy
   end
 
-  it 'loads railtie' do expect(defined? Rails::Sharding::Railtie).to be_truthy
+  it 'loads railtie' do
+    expect(defined? Rails::Sharding::Railtie).to be_truthy
     expect(Rails::Sharding::Railtie.superclass).to be == Rails::Railtie
   end
 
