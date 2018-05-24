@@ -9,15 +9,13 @@ describe Rails::Sharding do
     expect(defined? Rails::Sharding::Core).to be_truthy
   end
 
-  if defined?(Rails::Railtie)
-    it 'loads railtie' do expect(defined? Rails::Sharding::Railtie).to be_truthy
-      expect(Rails::Sharding::Railtie.superclass).to be == Rails::Railtie
-    end
+  it 'loads railtie' do expect(defined? Rails::Sharding::Railtie).to be_truthy
+    expect(Rails::Sharding::Railtie.superclass).to be == Rails::Railtie
+  end
 
-    it 'loads scaffold generator' do
-      expect(defined? RailsSharding::ScaffoldGenerator).to be_truthy
-      expect(RailsSharding::ScaffoldGenerator.superclass).to be == Rails::Generators::Base
-    end
+  it 'loads scaffold generator' do
+    expect(defined? RailsSharding::ScaffoldGenerator).to be_truthy
+    expect(RailsSharding::ScaffoldGenerator.superclass).to be == Rails::Generators::Base
   end
 
   it 'delegates all methods missing to Rails::Sharding::Core' do
