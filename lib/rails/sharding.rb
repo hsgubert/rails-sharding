@@ -9,10 +9,6 @@ require 'generators/scaffold_generator'
 
 require 'rails/sharding/railtie' if defined?(Rails::Railtie)
 
-# module Rails
-  # mattr_accessor :env
-# end
-
 module Rails
   module Sharding
 
