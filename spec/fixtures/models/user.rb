@@ -1,7 +1,5 @@
-
-
 class User < ActiveRecord::Base
   include Rails::Sharding::ShardableModel
 
-  belongs_to :accounts
+  belongs_to :account
 end
