@@ -78,7 +78,7 @@ module Rails::Sharding
     end
 
     def self.with_connection(shard_group, shard_name, &block)
-    	connection_pool(shard_group, shard_name).with_connection do |connection|
+      connection_pool(shard_group, shard_name).with_connection do |connection|
         if connection && Config.add_shard_tag_to_query_logs
           connection_name = connection_name(shard_group, shard_name)
           add_shard_tag_to_connection_log(connection, connection_name)

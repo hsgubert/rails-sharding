@@ -1,4 +1,3 @@
-
 class Account < ActiveRecord::Base
   include Rails::Sharding::ShardableModel
 
