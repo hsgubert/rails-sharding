@@ -281,10 +281,17 @@ shards_namespace = namespace :shards do
           should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
           Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
+          # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
+          initial_rails_env = Rails.env
+          Rails.env = 'test'
+
           Rails::Sharding.using_shard(shard_group, shard) do
             ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
           end
         ensure
+          # restores rails env
+          Rails.env = initial_rails_env
+          
           if should_reconnect
             # reestablishes connection for RAILS_ENV environment (whatever that is)
             Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
