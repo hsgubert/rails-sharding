@@ -25,10 +25,10 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'rails', '~> 5.1.0'
 
-  spec.add_development_dependency "bundler", "~> 1.15"
-  spec.add_development_dependency "rake", "~> 12.0"
+  spec.add_development_dependency "bundler", "~> 1.17"
+  spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.0"
-  spec.add_development_dependency "byebug", '~> 9'
+  spec.add_development_dependency "byebug", '~> 11'
   spec.add_development_dependency "mysql2", '~> 0'
   spec.add_development_dependency "pg", '~> 0' # postgres driver
   spec.add_development_dependency "codeclimate-test-reporter", '~> 1'
