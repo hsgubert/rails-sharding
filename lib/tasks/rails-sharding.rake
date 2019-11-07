@@ -274,29 +274,31 @@ shards_namespace = namespace :shards do
 
     desc "Empty the test shards (drops all tables) (options: SHARD_GROUP=x, SHARD=x)"
     task :purge => [:_make_activerecord_base_shardable] do
-      Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
-        puts "== Purging test shard #{shard_group}:#{shard}"
-        begin
-          # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
-          should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
-          Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
+      begin
+        # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
+        initial_rails_env = Rails.env
+        Rails.env = 'test'
 
-          # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
-          initial_rails_env = Rails.env
-          Rails.env = 'test'
-
-          Rails::Sharding.using_shard(shard_group, shard) do
-            ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
-          end
-        ensure
-          # restores rails env
-          Rails.env = initial_rails_env
-          
-          if should_reconnect
-            # reestablishes connection for RAILS_ENV environment (whatever that is)
-            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
+        Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
+          puts "== Purging test shard #{shard_group}:#{shard}"
+          begin
+            # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
+            should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
+            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
+  
+            Rails::Sharding.using_shard(shard_group, shard) do
+              ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
+            end
+          ensure          
+            if should_reconnect
+              # reestablishes connection for RAILS_ENV environment (whatever that is)
+              Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
+            end
           end
         end
+      ensure
+        # restores rails env
+        Rails.env = initial_rails_env
       end
     end
   end
