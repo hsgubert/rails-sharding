@@ -13,10 +13,11 @@ module Rails::Sharding
       ShardThreadRegistry.push_current_shard(shard_group, shard_name)
       yield
     ensure
+      was_connected_to_master = ShardThreadRegistry.connecting_to_master?
       shard_group, shard_name, connection_used = ShardThreadRegistry.pop_current_shard
 
-      # shows warning to user
-      if Config.no_connection_retrieved_warning && !connection_used
+      # shows warning to user (except when connected to master database)
+      if Config.no_connection_retrieved_warning && !connection_used && !was_connected_to_master
         puts "Warning: no connection to shard '#{shard_group}:#{shard_name}' was retrieved inside the using_shard block. Make sure you don't forget to include Rails::Sharding::ShardableModel to the models you want to be sharded. Disable this warning with Rails::Sharding::Config.no_connection_retrieved_warning = false."
       end
 
