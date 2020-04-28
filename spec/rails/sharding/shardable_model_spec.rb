@@ -142,4 +142,18 @@ describe Rails::Sharding::ShardableModel do
     end
   end
 
+  describe '.flush_idle_connections!' do
+    it 'should call original method if connecting to master' do
+      expect(TestModel).to receive(:original_flush_idle_connections!).once
+      TestModel.flush_idle_connections!
+    end
+
+    it 'should delegate to sharded flush_idle_connections! if using shard' do
+      expect(@mock_connection_handler).to receive(:flush_idle_connections!).once
+      Rails::Sharding.using_shard(:mysql_group, :shard1) do
+        TestModel.flush_idle_connections!
+      end
+    end
+  end
+
 end

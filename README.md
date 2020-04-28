@@ -8,13 +8,13 @@
 
 Simple and robust sharding gem for Rails, including Migrations and ActiveRecord extensions
 
-This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases. 
+This gems allows you to easily create extra databases to your rails application, and freely allocate ActiveRecord instances to any of the databases.
 
 Accessing shards is as simple as:
 ```ruby
   # creating a user to a specific shard
   new_user = User.using_shard(:shard_group1, :shard1).create(username: 'x')
-  
+
   # retrieving a user from a specific shard
   loaded_user = User.using_shard(:shard_group1, :shard1).where(username: 'x').first
 ```
@@ -23,7 +23,7 @@ You can also use the block syntax:
 ```ruby
   Rails::Sharding.using_shard(:shard_group1, :shard1) do
     # All statements inside this block will go to the selected shard
-    
+
     # Do some queries
     new_user = User.create(username: 'x')
     loaded_user = User.where(username: 'x').first
@@ -35,7 +35,7 @@ You can also pick and choose which models will be shardable. Non shardable model
 
 ## Compatibility
 Gem version 1.x.x:
-* Rails 5.0 and 5.1
+* Rails 5.0, 5.1 and 5.2
 * Databases: MySQL, MariaDB, Postgres
 
 Gem version 0.x.x:
@@ -85,7 +85,7 @@ development:
 ...
 ```
 
-Rename it to `config/shards.yml` and change it to your database configuration. This example file defines a single shard group (named `shard_group1`) containing two shards (`shard1` and `shard2`). 
+Rename it to `config/shards.yml` and change it to your database configuration. This example file defines a single shard group (named `shard_group1`) containing two shards (`shard1` and `shard2`).
 
 **A shard group is a set of shards that should have the same schema.**
 
@@ -95,7 +95,7 @@ rake shards:create
 ```
 
 ## Migrating Shards
-Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema. 
+Go to the directory `db/shards_migrations/shard_group1` and add all migrations that you want to run on the shards of `shard_group1`. By design, all shards in a same group should always have the same schema.
 
 
 As of now, there is no generator for migrations. You can use the regular rails generator and move the migrations to the `shards_migration` folder.
@@ -195,11 +195,11 @@ Want to know more? How to integrate with RSpec, Capistrano, etc? Take a look at 
 
 After checking out the repo:
 
-1. Run `bundle` to install gems 
+1. Run `bundle` to install gems
 
 1. Create your `spec/fixtures/shards.yml` based on the example on this same folder (you need MySQL and Postgres)
 
-1. Run `rake db:test:prepare` to create the test shards. 
+1. Run `rake db:test:prepare` to create the test shards.
 
 1. Run `rspec` to run the tests.
 

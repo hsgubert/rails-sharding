@@ -52,7 +52,7 @@ module Rails::Sharding
         end
       end
 
-      # @overrides ActiveRecord::ConnectionHandling#sharded_connected?
+      # @overrides ActiveRecord::ConnectionHandling#connected?
       def sharded_connected?
         if ShardThreadRegistry.connecting_to_master?
           return original_connected?
@@ -105,6 +105,15 @@ module Rails::Sharding
           return original_clear_all_connections!
         else
           return ConnectionHandler.connection_handler.clear_all_connections!
+        end
+      end
+
+      # @overrides ActiveRecord::ConnectionHandling#flush_idle_connections!
+      def sharded_flush_idle_connections!
+        if ShardThreadRegistry.connecting_to_master?
+          return original_flush_idle_connections!
+        else
+          return ConnectionHandler.connection_handler.flush_idle_connections!
         end
       end
     end

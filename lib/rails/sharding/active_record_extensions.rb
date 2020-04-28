@@ -78,7 +78,7 @@ module Rails::Sharding
       alias_method :eql?, :==
     end
 
-    # Fixes case when behavior when ScopeProxy is passed to case
+    # Fixes case-when behavior when ScopeProxy is passed to case
     # (otherwise classes don't match)
     module CaseFixer
       def ===(other)
