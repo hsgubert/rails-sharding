@@ -27,25 +27,32 @@ shards_namespace = namespace :shards do
 
   desc "Creates database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
   task create: [:environment] do
-    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
-      puts "== Creating shard #{shard_group}:#{shard}"
-      ActiveRecord::Tasks::DatabaseTasks.create(configuration)
+    # creates DB for both development and test envs, when in development
+    each_current_environment do |environment|
+      Rails::Sharding.for_each_shard(environment: environment, shard_group_filter: ENV["SHARD_GROUP"], shard_name_filter: ENV["SHARD"]) do |shard_group, shard, configuration|
+        puts "== Creating shard #{shard_group}:#{shard}"
+
+        ActiveRecord::Tasks::DatabaseTasks.create(configuration)
+      end
     end
   end
 
   desc "Drops database shards (options: RAILS_ENV=x SHARD_GROUP=x SHARD=x)"
   task drop: [:environment, :check_protected_environments] do
-    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
-      puts "== Dropping shard #{shard_group}:#{shard}"
+    # drops DB for both development and test envs, when in development
+    each_current_environment do |environment|
+      Rails::Sharding.for_each_shard(shard_group_filter: ENV["SHARD_GROUP"], shard_name_filter: ENV["SHARD"]) do |shard_group, shard, configuration|
+        puts "== Dropping shard #{shard_group}:#{shard}"
 
-      # closes connections with shard before dropping (postgres requires this, mysql does not but there is no harm)
-      Rails::Sharding::ConnectionHandler.remove_connection(shard_group, shard)
+        # closes connections with shard before dropping (postgres requires this, mysql does not but there is no harm)
+        Rails::Sharding::ConnectionHandler.remove_connection(shard_group, shard)
 
-      ActiveRecord::Tasks::DatabaseTasks.drop(configuration)
+        ActiveRecord::Tasks::DatabaseTasks.drop(configuration)
 
-      # reestablishes connection (because we removed before). You can do this even if the database does not exist yet,
-      # you just cannot retrieve the connection yet.
-      Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
+        # reestablishes connection (because we removed before). You can do this even if the database does not exist yet,
+        # you just cannot retrieve the connection yet.
+        Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
+      end
     end
   end
 
@@ -91,7 +98,7 @@ shards_namespace = namespace :shards do
     task dump: [:_make_activerecord_base_shardable] do
       require "active_record/schema_dumper"
 
-      Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, _configuration|
+      Rails::Sharding.for_each_shard(shard_group_filter: ENV["SHARD_GROUP"], shard_name_filter: ENV["SHARD"]) do |shard_group, shard, _configuration|
         puts "== Dumping schema of #{shard_group}:#{shard}"
 
         schema_filename = shard_schema_path(shard_group, shard)
@@ -216,7 +223,7 @@ shards_namespace = namespace :shards do
 
   desc "Retrieves the current schema version number"
   task version: [:_make_activerecord_base_shardable] do
-    Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, _configuration|
+    Rails::Sharding.for_each_shard(shard_group_filter: ENV["SHARD_GROUP"], shard_name_filter: ENV["SHARD"]) do |shard_group, shard, _configuration|
       Rails::Sharding.using_shard(shard_group, shard) do
         puts "Shard #{shard_group}:#{shard} version: #{ActiveRecord::Migrator.current_version}"
       end
@@ -273,32 +280,23 @@ shards_namespace = namespace :shards do
     end
 
     desc "Empty the test shards (drops all tables) (options: SHARD_GROUP=x, SHARD=x)"
-    task :purge => [:_make_activerecord_base_shardable] do
-      begin
-        # saves the current RAILS_ENV (we must change it so the environment is set correcly on the metadata table)
-        initial_rails_env = Rails.env
-        Rails.env = 'test'
+    task purge: [:_make_activerecord_base_shardable] do
+      Rails::Sharding.for_each_shard(environment: 'test', shard_group_filter: ENV["SHARD_GROUP"], shard_name_filter: ENV["SHARD"]) do |shard_group, shard, configuration|
+        puts "== Purging test shard #{shard_group}:#{shard}"
+        begin
+          # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
+          should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
+          Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
 
-        Rails::Sharding.for_each_shard(ENV["SHARD_GROUP"], ENV["SHARD"]) do |shard_group, shard, configuration|
-          puts "== Purging test shard #{shard_group}:#{shard}"
-          begin
-            # establishes connection with test shard, saving if it was connected before (rails 4.2 doesn't do this, but should)
-            should_reconnect = Rails::Sharding::ConnectionHandler.connection_pool(shard_group, shard).active_connection?
-            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard, 'test')
-  
-            Rails::Sharding.using_shard(shard_group, shard) do
-              ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
-            end
-          ensure          
-            if should_reconnect
-              # reestablishes connection for RAILS_ENV environment (whatever that is)
-              Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
-            end
+          Rails::Sharding.using_shard(shard_group, shard) do
+            ActiveRecord::Tasks::DatabaseTasks.purge(configuration)
+          end
+        ensure
+          if should_reconnect
+            # reestablishes connection for RAILS_ENV environment (whatever that is)
+            Rails::Sharding::ConnectionHandler.establish_connection(shard_group, shard)
           end
         end
-      ensure
-        # restores rails env
-        Rails.env = initial_rails_env
       end
     end
   end
@@ -324,5 +322,14 @@ shards_namespace = namespace :shards do
     version = ENV["VERSION"] ? ENV["VERSION"].to_i : nil
     raise error_message unless version
     version
+  end
+
+  def each_current_environment
+    environments = [Rails.env]
+    environments << "test" if environments == ["development"]
+
+    environments.each do |env|
+      yield env
+    end
   end
 end

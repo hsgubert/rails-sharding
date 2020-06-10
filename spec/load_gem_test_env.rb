@@ -1,8 +1,8 @@
-# This file load the enviroment to run the gem tests. It is called from the
+# This file load the environment to run the gem tests. It is called from the
 # spec_helper (to run tests) and also from the Rakefile (to prepare test
 # databases).
 #
-# Preparing the test enviroment includes:
+# Preparing the test environment includes:
 # => Setting up the load path to find files in the lib directory
 # => Loading rails
 # => Changing default rails-sharding config files paths to paths in spec/fixtures

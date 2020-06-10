@@ -33,7 +33,7 @@ module Rails::Sharding
       environment_config = @@db_configs[environment]
       return environment_config if environment_config
 
-      raise Errors::ConfigNotFoundError, 'Found no shard configurations for enviroment "' + environment + '" in ' + Config.shards_config_file.to_s + ' file was not found'
+      raise Errors::ConfigNotFoundError, 'Found no shard configurations for environment "' + environment + '" in ' + Config.shards_config_file.to_s + ' file was not found'
     rescue Errno::ENOENT
       raise Errors::ConfigNotFoundError, Config.shards_config_file.to_s + ' file was not found'
     end
@@ -57,11 +57,11 @@ module Rails::Sharding
     # yields a block for each shard in each shard group, with its configurations
     # shard_group_filter: if passed yields only shards of this group
     # shard_name_filter: if passed yields only shards with this name
-    def self.for_each_shard(shard_group_filter=nil, shard_name_filter=nil)
+    def self.for_each_shard(environment:Rails.env, shard_group_filter:nil, shard_name_filter:nil)
       shard_group_filter.to_s if shard_group_filter
       shard_name_filter.to_s if shard_name_filter
 
-      configurations.each do |shard_group, shards_configurations|
+      configurations(environment).each do |shard_group, shards_configurations|
         next if shard_group_filter && shard_group_filter != shard_group.to_s
 
         shards_configurations.each do |shard, configuration|
