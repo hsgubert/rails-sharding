@@ -29,7 +29,7 @@ module Rails::Sharding
     end
 
     def self.configurations(environment=Rails.env)
-      @@db_configs ||= YAML.load_file(Config.shards_config_file)
+      @@db_configs ||= YAML.load(ERB.new(File.read(Config.shards_config_file)).result)
       environment_config = @@db_configs[environment]
       return environment_config if environment_config
 
