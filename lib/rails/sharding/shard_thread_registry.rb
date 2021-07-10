@@ -1,3 +1,4 @@
+require 'active_support/core_ext/module'
 
 module Rails::Sharding
   class ShardThreadRegistry
