@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe Rails::Sharding::Core do
-
   describe '.setup' do
     it 'should yield Config class to block' do
       Rails::Sharding::Core.setup do |config|
@@ -40,9 +39,22 @@ describe Rails::Sharding::Core do
   end
 
   describe '.configurations' do
+    before do
+      stub_const('ENV', ENV)
+    end
+
+    let(:shard_configurations) { YAML.load(ERB.new(File.read('spec/fixtures/shards.yml')).result) }
+
     it 'should load shards.yml scoped by the current Rails.env or explicitly passed environment' do
-      expect(described_class.configurations).to be == YAML.load_file('spec/fixtures/shards.yml')['development']
-      expect(described_class.configurations('test')).to be == YAML.load_file('spec/fixtures/shards.yml')['test']
+      expect(described_class.configurations).to be == shard_configurations['development']
+      expect(described_class.configurations('test')).to be == shard_configurations['test']
+    end
+
+    it 'should load shards.yml with environment variables in ERB tags' do
+      shard1 = shard_configurations['development']['mysql_group']['shard1']
+      expect(described_class.configurations['mysql_group']).to be == shard_configurations['development']['mysql_group']
+      expect(shard1['username']).to be == ENV['MYSQL_USERNAME']
+      expect(shard1['password'].to_s).to be == ENV['MYSQL_PASSWORD']
     end
 
     it 'should raise error if shards.yml file is not found' do
@@ -67,19 +79,19 @@ describe Rails::Sharding::Core do
 
   describe '.test_configurations' do
     it 'should load shards.yml scoped by the test environment' do
-      expect(described_class.test_configurations).to be == YAML.load_file('spec/fixtures/shards.yml')['test']
+      expect(described_class.test_configurations).to be == YAML.load(ERB.new(File.read('spec/fixtures/shards.yml')).result)['test']
     end
   end
 
   describe '.shard_groups' do
     it 'should return an array of all existing shard groups in shards.yml' do
-      expect(described_class.shard_groups).to be == ['mysql_group', 'postgres_group']
+      expect(described_class.shard_groups).to be == %w[mysql_group postgres_group]
     end
   end
 
   describe '.shard_names' do
     it 'should return an array of all existing shard groups in shards.yml' do
-      expect(described_class.shard_names('mysql_group')).to be == ['shard1', 'shard2']
+      expect(described_class.shard_names('mysql_group')).to be == %w[shard1 shard2]
     end
   end
 
@@ -110,7 +122,8 @@ describe Rails::Sharding::Core do
 
     it 'should release shard connection from connection pool upon finishing the block' do
       described_class.using_shard(:mysql_group, :shard1) do
-        expect(Rails::Sharding::ConnectionHandler.connection_pool(:mysql_group, :shard1)).to receive(:release_connection).once
+        expect(Rails::Sharding::ConnectionHandler.connection_pool(:mysql_group,
+                                                                  :shard1)).to receive(:release_connection).once
       end
     end
 
@@ -130,19 +143,18 @@ describe Rails::Sharding::Core do
       expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
 
       described_class.using_shard(:mysql_group, :shard1) do
-        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard1]
+        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == %i[mysql_group shard1]
         described_class.using_shard(:mysql_group, :shard2) do
-          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard2]
+          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == %i[mysql_group shard2]
           described_class.using_shard(nil, nil) do
             expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
           end
-          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard2]
+          expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == %i[mysql_group shard2]
         end
-        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [:mysql_group, :shard1]
+        expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == %i[mysql_group shard1]
       end
 
       expect(Rails::Sharding::ShardThreadRegistry.current_shard_group_and_name).to be == [nil, nil]
     end
   end
-
 end

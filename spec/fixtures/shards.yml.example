@@ -3,8 +3,8 @@ mysql_default: &mysql_default
   encoding: utf8
   reconnect: false
   pool: 5
-  username: ____
-  password: '____'
+  username: <%=ENV["MYSQL_USERNAME"]%>
+  password: <%=ENV["MYSQL_PASSWORD"]%>
   socket: /var/run/mysqld/mysqld.sock
 
 postgres_default: &postgres_default

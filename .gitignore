@@ -11,3 +11,4 @@
 /tmp/
 .byebug_history
 rails-sharding-*.*.*.gem
+.env
