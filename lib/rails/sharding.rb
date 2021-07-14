@@ -1,5 +1,3 @@
-require 'dotenv/load'
-
 require 'rails'
 
 require 'rails/sharding/version'

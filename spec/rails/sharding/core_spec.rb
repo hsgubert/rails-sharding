@@ -39,10 +39,6 @@ describe Rails::Sharding::Core do
   end
 
   describe '.configurations' do
-    before do
-      stub_const('ENV', ENV)
-    end
-
     let(:shard_configurations) { YAML.load(ERB.new(File.read('spec/fixtures/shards.yml')).result) }
 
     it 'should load shards.yml scoped by the current Rails.env or explicitly passed environment' do
@@ -50,11 +46,9 @@ describe Rails::Sharding::Core do
       expect(described_class.configurations('test')).to be == shard_configurations['test']
     end
 
-    it 'should load shards.yml with environment variables in ERB tags' do
-      shard1 = shard_configurations['development']['mysql_group']['shard1']
-      expect(described_class.configurations['mysql_group']).to be == shard_configurations['development']['mysql_group']
-      expect(shard1['username']).to be == ENV['MYSQL_USERNAME']
-      expect(shard1['password'].to_s).to be == ENV['MYSQL_PASSWORD']
+    it 'should load shards.yml different than configuration' do
+      stub_const('ENV', 'MYSQL_USERNAME' => 'root1', 'MYSQL_PASSWORD' => '1234')
+      expect(described_class.configurations).not_to be == shard_configurations['development']
     end
 
     it 'should raise error if shards.yml file is not found' do
